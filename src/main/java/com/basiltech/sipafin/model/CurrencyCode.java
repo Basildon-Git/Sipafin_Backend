@@ -1,4 +1,8 @@
 package com.basiltech.sipafin.model;
 
-public class CurrencyCode {
+public enum CurrencyCode {
+    USD,
+    ZIG,
+    ZAR,
+    EUR
 }

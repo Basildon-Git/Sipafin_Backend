@@ -1,4 +1,8 @@
 package com.basiltech.sipafin.model;
 
-public class ClientLoanTransactionType {
+public enum ClientLoanTransactionType {
+    LOAN_ISSUED,
+    LOAN_REPAYMENT,
+    ADJUSTMENT,
+    REVERSAL
 }

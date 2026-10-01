@@ -1,7 +1,8 @@
 package com.basiltech.sipafin.repository;
 
+import com.basiltech.sipafin.model.BankLedgerTransactionType;
 import com.basiltech.sipafin.model.BankTransaction;
-import com.basiltech.sipafin.model.BankTransactionType;
+import com.basiltech.sipafin.model.CurrencyCode;
 import com.basiltech.sipafin.model.TransactionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -14,9 +15,15 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
 
     List<BankTransaction> findByBranchId(Long branchId);
 
+    List<BankTransaction> findByBranchIdAndCurrency(Long branchId, CurrencyCode currency);
+
+    List<BankTransaction> findByBankAccountIdAndCurrency(Long bankAccountId, CurrencyCode currency);
+
     List<BankTransaction> findByTransactionGroupId(String transactionGroupId);
 
-    List<BankTransaction> findByTransactionType(BankTransactionType transactionType);
+    List<BankTransaction> findByCurrency(CurrencyCode currency);
+
+    List<BankTransaction> findByTransactionType(BankLedgerTransactionType transactionType);
 
     List<BankTransaction> findByStatus(TransactionStatus status);
 

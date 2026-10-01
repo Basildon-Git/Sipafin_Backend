@@ -1,5 +1,6 @@
 package com.basiltech.sipafin.dto;
 
+import com.basiltech.sipafin.model.CurrencyCode;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -16,8 +17,6 @@ public class BankAccountDtos {
             @NotNull(message = "Bank ID is required")
             Long bankId,
 
-            Long branchId,
-
             @NotBlank(message = "Account name is required")
             @Size(max = 150, message = "Account name must not exceed 150 characters")
             String accountName,
@@ -26,9 +25,8 @@ public class BankAccountDtos {
             @Size(max = 100, message = "Account number must not exceed 100 characters")
             String accountNumber,
 
-            @NotBlank(message = "Currency is required")
-            @Size(max = 10, message = "Currency must not exceed 10 characters")
-            String currency,
+            @NotNull(message = "Currency is required")
+            CurrencyCode currency,
 
             @NotNull(message = "Opening balance is required")
             @DecimalMin(value = "0.00", message = "Opening balance cannot be negative")
@@ -44,8 +42,6 @@ public class BankAccountDtos {
             @NotNull(message = "Bank ID is required")
             Long bankId,
 
-            Long branchId,
-
             @NotBlank(message = "Account name is required")
             @Size(max = 150, message = "Account name must not exceed 150 characters")
             String accountName,
@@ -54,9 +50,8 @@ public class BankAccountDtos {
             @Size(max = 100, message = "Account number must not exceed 100 characters")
             String accountNumber,
 
-            @NotBlank(message = "Currency is required")
-            @Size(max = 10, message = "Currency must not exceed 10 characters")
-            String currency,
+            @NotNull(message = "Currency is required")
+            CurrencyCode currency,
 
             boolean active,
 
@@ -77,11 +72,9 @@ public class BankAccountDtos {
             Long bankId,
             String bankName,
             String bankCode,
-            Long branchId,
-            String branchName,
             String accountName,
             String accountNumber,
-            String currency,
+            CurrencyCode currency,
             BigDecimal currentBalance,
             boolean active,
             String actionedBy,

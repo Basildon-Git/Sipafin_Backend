@@ -1,4 +1,20 @@
 package com.basiltech.sipafin.model;
 
-public interface BankLedgerTransactionType {
+public enum BankLedgerTransactionType {
+    CASH_DEPOSIT,
+    CASH_WITHDRAWAL,
+
+    COMMISSION_CREDIT,
+    EXPENSE_PAYMENT,
+
+    CURRENCY_EXCHANGE_IN,
+    CURRENCY_EXCHANGE_OUT,
+
+    CLIENT_LOAN_ISSUED,
+    CLIENT_LOAN_REPAYMENT,
+
+    RECONCILIATION_ADJUSTMENT,
+
+    ADJUSTMENT,
+    REVERSAL
 }

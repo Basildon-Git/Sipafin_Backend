@@ -2,6 +2,7 @@ package com.basiltech.sipafin.controller;
 
 import com.basiltech.sipafin.dto.ApiResponse;
 import com.basiltech.sipafin.dto.BankAccountDtos;
+import com.basiltech.sipafin.model.CurrencyCode;
 import com.basiltech.sipafin.service.BankAccountService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -52,11 +53,6 @@ public class BankAccountController {
         return ResponseEntity.ok(ApiResponse.of(200, "Bank accounts by bank fetched successfully", bankAccountService.getBankAccountsByBank(bankId)));
     }
 
-    @GetMapping("/branch/{branchId}")
-    public ResponseEntity<ApiResponse<List<BankAccountDtos.BankAccountResponse>>> getBankAccountsByBranch(@PathVariable Long branchId) {
-        return ResponseEntity.ok(ApiResponse.of(200, "Bank accounts by branch fetched successfully", bankAccountService.getBankAccountsByBranch(branchId)));
-    }
-
     @GetMapping("/search")
     public ResponseEntity<ApiResponse<List<BankAccountDtos.BankAccountResponse>>> searchBankAccounts(@RequestParam String keyword) {
         return ResponseEntity.ok(ApiResponse.of(200, "Bank account search completed successfully", bankAccountService.searchBankAccounts(keyword)));
@@ -84,5 +80,35 @@ public class BankAccountController {
             @Valid @RequestBody BankAccountDtos.BankAccountStatusRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.of(200, "Bank account deactivated successfully", bankAccountService.deactivateBankAccount(id, request)));
+    }
+
+    @GetMapping("/currency/{currency}")
+    public ResponseEntity<ApiResponse<?>> getBankAccountsByCurrency(@PathVariable CurrencyCode currency) {
+        return ResponseEntity.ok(ApiResponse.of(
+                HttpStatus.OK.value(),
+                "Bank accounts by currency fetched successfully",
+                bankAccountService.getBankAccountsByCurrency(currency)
+        ));
+    }
+
+    @GetMapping("/currency/{currency}/active")
+    public ResponseEntity<ApiResponse<?>> getActiveBankAccountsByCurrency(@PathVariable CurrencyCode currency) {
+        return ResponseEntity.ok(ApiResponse.of(
+                HttpStatus.OK.value(),
+                "Active bank accounts by currency fetched successfully",
+                bankAccountService.getActiveBankAccountsByCurrency(currency)
+        ));
+    }
+
+    @GetMapping("/bank/{bankId}/currency/{currency}")
+    public ResponseEntity<ApiResponse<?>> getBankAccountsByBankAndCurrency(
+            @PathVariable Long bankId,
+            @PathVariable CurrencyCode currency
+    ) {
+        return ResponseEntity.ok(ApiResponse.of(
+                HttpStatus.OK.value(),
+                "Bank accounts by bank and currency fetched successfully",
+                bankAccountService.getBankAccountsByBankAndCurrency(bankId, currency)
+        ));
     }
 }

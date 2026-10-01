@@ -4,8 +4,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.math.BigDecimal;
-
 @Entity
 @Table(
         name = "branches",
@@ -34,9 +32,6 @@ public class Branch extends Auditable {
 
     @Column(length = 255)
     private String location;
-
-    @Column(name = "current_cash_float_balance", nullable = false, precision = 19, scale = 2)
-    private BigDecimal currentCashFloatBalance = BigDecimal.ZERO;
 
     @Column(nullable = false)
     private boolean active = true;

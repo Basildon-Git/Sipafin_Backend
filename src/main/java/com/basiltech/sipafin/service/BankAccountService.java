@@ -1,6 +1,7 @@
 package com.basiltech.sipafin.service;
 
 import com.basiltech.sipafin.dto.BankAccountDtos;
+import com.basiltech.sipafin.model.CurrencyCode;
 
 import java.util.List;
 
@@ -16,7 +17,11 @@ public interface BankAccountService {
 
     List<BankAccountDtos.BankAccountResponse> getBankAccountsByBank(Long bankId);
 
-    List<BankAccountDtos.BankAccountResponse> getBankAccountsByBranch(Long branchId);
+    List<BankAccountDtos.BankAccountResponse> getBankAccountsByCurrency(CurrencyCode currency);
+
+    List<BankAccountDtos.BankAccountResponse> getActiveBankAccountsByCurrency(CurrencyCode currency);
+
+    List<BankAccountDtos.BankAccountResponse> getBankAccountsByBankAndCurrency(Long bankId, CurrencyCode currency);
 
     List<BankAccountDtos.BankAccountResponse> searchBankAccounts(String keyword);
 

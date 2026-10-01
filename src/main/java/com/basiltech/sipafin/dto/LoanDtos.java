@@ -1,5 +1,6 @@
 package com.basiltech.sipafin.dto;
 
+import com.basiltech.sipafin.model.CurrencyCode;
 import com.basiltech.sipafin.model.LoanStatus;
 import com.basiltech.sipafin.model.LoanTransactionType;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -22,9 +23,16 @@ public class LoanDtos {
             @NotNull(message = "Branch ID is required")
             Long branchId,
 
+            @NotNull(message = "Currency is required")
+            CurrencyCode currency,
+
             @NotNull(message = "Principal amount is required")
             @DecimalMin(value = "0.01", message = "Principal amount must be greater than zero")
             BigDecimal principalAmount,
+
+            @NotNull(message = "Interest rate is required")
+            @DecimalMin(value = "0.0000", message = "Interest rate cannot be negative")
+            BigDecimal interestRate,
 
             @NotNull(message = "Date received is required")
             LocalDate dateReceived,
@@ -80,7 +88,11 @@ public class LoanDtos {
             String investorName,
             Long branchId,
             String branchName,
+            CurrencyCode currency,
             BigDecimal principalAmount,
+            BigDecimal interestRate,
+            BigDecimal interestAmount,
+            BigDecimal totalPayable,
             BigDecimal outstandingBalance,
             LoanStatus status,
             LocalDate dateReceived,
@@ -97,6 +109,7 @@ public class LoanDtos {
             Long loanAccountId,
             Long branchId,
             String branchName,
+            CurrencyCode currency,
             LoanTransactionType transactionType,
             BigDecimal amount,
             LocalDate transactionDate,

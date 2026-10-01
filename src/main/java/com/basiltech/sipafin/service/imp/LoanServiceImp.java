@@ -20,7 +20,8 @@ public class LoanServiceImp implements LoanService {
 
     private final LoanAccountRepository loanAccountRepository;
     private final LoanTransactionRepository loanTransactionRepository;
-    private final PettyCashTransactionRepository pettyCashTransactionRepository;
+    private final BranchFloatAccountRepository branchFloatAccountRepository;
+    private final BranchFloatTransactionRepository branchFloatTransactionRepository;
     private final InvestorRepository investorRepository;
     private final BranchRepository branchRepository;
     private final LoanMapper loanMapper;
@@ -30,12 +31,25 @@ public class LoanServiceImp implements LoanService {
     public LoanDtos.LoanAccountResponse receiveLoan(LoanDtos.ReceiveLoanRequest request) {
         Investor investor = findActiveInvestor(request.investorId());
         Branch branch = findActiveBranch(request.branchId());
+        BranchFloatAccount floatAccount = findActiveFloatAccount(request.branchId(), request.currency());
+        String transactionGroupId = "TXN-" + java.util.UUID.randomUUID();
 
         LoanAccount loanAccount = new LoanAccount();
         loanAccount.setInvestor(investor);
         loanAccount.setBranch(branch);
+        loanAccount.setCurrency(request.currency());
+
+        BigDecimal interestAmount = request.principalAmount()
+                .multiply(request.interestRate())
+                .divide(BigDecimal.valueOf(100));
+
+        BigDecimal totalPayable = request.principalAmount().add(interestAmount);
+
         loanAccount.setPrincipalAmount(request.principalAmount());
-        loanAccount.setOutstandingBalance(request.principalAmount());
+        loanAccount.setInterestRate(request.interestRate());
+        loanAccount.setInterestAmount(interestAmount);
+        loanAccount.setTotalPayable(totalPayable);
+        loanAccount.setOutstandingBalance(totalPayable);
         loanAccount.setStatus(LoanStatus.ACTIVE);
         loanAccount.setDateReceived(request.dateReceived());
         loanAccount.setDueDate(request.dueDate());
@@ -47,6 +61,7 @@ public class LoanServiceImp implements LoanService {
         LoanTransaction loanTransaction = new LoanTransaction();
         loanTransaction.setLoanAccount(savedLoan);
         loanTransaction.setBranch(branch);
+        loanTransaction.setCurrency(request.currency());
         loanTransaction.setTransactionType(LoanTransactionType.LOAN_RECEIVED);
         loanTransaction.setAmount(request.principalAmount());
         loanTransaction.setTransactionDate(request.dateReceived());
@@ -55,22 +70,26 @@ public class LoanServiceImp implements LoanService {
         loanTransaction.setActionedBy(request.actionedBy());
         loanTransactionRepository.save(loanTransaction);
 
-        PettyCashTransaction pettyCashTransaction = new PettyCashTransaction();
-        pettyCashTransaction.setBranch(branch);
-        pettyCashTransaction.setTransactionType(PettyCashTransactionType.LOAN_RECEIVED);
-        pettyCashTransaction.setDirection(CashDirection.IN);
-        pettyCashTransaction.setAmount(request.principalAmount());
-        pettyCashTransaction.setTransactionDate(request.dateReceived());
-        pettyCashTransaction.setTransactionGroupId("TXN-" + java.util.UUID.randomUUID());
-        pettyCashTransaction.setStatus(TransactionStatus.POSTED);
-        pettyCashTransaction.setReference(request.reference());
-        pettyCashTransaction.setDescription("Loan received from investor: " + investor.getFullName());
-        pettyCashTransaction.setActionedBy(request.actionedBy());
-        pettyCashTransactionRepository.save(pettyCashTransaction);
+        BigDecimal balanceAfter = floatAccount.getCurrentBalance().add(request.principalAmount());
+        floatAccount.setCurrentBalance(balanceAfter);
+        floatAccount.setActionedBy(request.actionedBy());
+        branchFloatAccountRepository.save(floatAccount);
 
-        branch.setCurrentCashFloatBalance(branch.getCurrentCashFloatBalance().add(request.principalAmount()));
-        branch.setActionedBy(request.actionedBy());
-        branchRepository.save(branch);
+        BranchFloatTransaction floatTransaction = new BranchFloatTransaction();
+        floatTransaction.setBranchFloatAccount(floatAccount);
+        floatTransaction.setBranch(branch);
+        floatTransaction.setCurrency(request.currency());
+        floatTransaction.setTransactionType(BranchFloatTransactionType.LOAN_RECEIVED);
+        floatTransaction.setDirection(MoneyDirection.IN);
+        floatTransaction.setAmount(request.principalAmount());
+        floatTransaction.setBalanceAfter(balanceAfter);
+        floatTransaction.setTransactionDate(request.dateReceived());
+        floatTransaction.setTransactionGroupId(transactionGroupId);
+        floatTransaction.setStatus(TransactionStatus.POSTED);
+        floatTransaction.setReference(request.reference());
+        floatTransaction.setDescription("Loan received from investor: " + investor.getFullName());
+        floatTransaction.setActionedBy(request.actionedBy());
+        branchFloatTransactionRepository.save(floatTransaction);
 
         return loanMapper.toLoanAccountResponse(savedLoan);
     }
@@ -79,6 +98,11 @@ public class LoanServiceImp implements LoanService {
     @Transactional
     public LoanDtos.LoanAccountResponse repayLoan(Long loanAccountId, LoanDtos.RepayLoanRequest request) {
         LoanAccount loanAccount = findLoan(loanAccountId);
+        BranchFloatAccount floatAccount = findActiveFloatAccount(
+                loanAccount.getBranch().getId(),
+                loanAccount.getCurrency()
+        );
+        String transactionGroupId = "TXN-" + java.util.UUID.randomUUID();
 
         if (loanAccount.getStatus() == LoanStatus.PAID || loanAccount.getStatus() == LoanStatus.CANCELLED) {
             throw new IllegalArgumentException("Loan is not active for repayment");
@@ -88,8 +112,8 @@ public class LoanServiceImp implements LoanService {
             throw new IllegalArgumentException("Repayment amount cannot exceed outstanding balance");
         }
 
-        if (loanAccount.getBranch().getCurrentCashFloatBalance().compareTo(request.amount()) < 0) {
-            throw new IllegalArgumentException("Insufficient branch cash float balance");
+        if (floatAccount.getCurrentBalance().compareTo(request.amount()) < 0) {
+            throw new IllegalArgumentException("Insufficient branch float balance");
         }
 
         BigDecimal newOutstanding = loanAccount.getOutstandingBalance().subtract(request.amount());
@@ -107,6 +131,7 @@ public class LoanServiceImp implements LoanService {
         LoanTransaction loanTransaction = new LoanTransaction();
         loanTransaction.setLoanAccount(savedLoan);
         loanTransaction.setBranch(savedLoan.getBranch());
+        loanTransaction.setCurrency(savedLoan.getCurrency());
         loanTransaction.setTransactionType(LoanTransactionType.LOAN_REPAYMENT);
         loanTransaction.setAmount(request.amount());
         loanTransaction.setTransactionDate(request.transactionDate());
@@ -115,23 +140,26 @@ public class LoanServiceImp implements LoanService {
         loanTransaction.setActionedBy(request.actionedBy());
         loanTransactionRepository.save(loanTransaction);
 
-        PettyCashTransaction pettyCashTransaction = new PettyCashTransaction();
-        pettyCashTransaction.setBranch(savedLoan.getBranch());
-        pettyCashTransaction.setTransactionType(PettyCashTransactionType.LOAN_REPAYMENT);
-        pettyCashTransaction.setDirection(CashDirection.OUT);
-        pettyCashTransaction.setAmount(request.amount());
-        pettyCashTransaction.setTransactionDate(request.transactionDate());
-        pettyCashTransaction.setTransactionGroupId("TXN-" + java.util.UUID.randomUUID());
-        pettyCashTransaction.setStatus(TransactionStatus.POSTED);
-        pettyCashTransaction.setReference(request.reference());
-        pettyCashTransaction.setDescription("Loan repayment to investor: " + savedLoan.getInvestor().getFullName());
-        pettyCashTransaction.setActionedBy(request.actionedBy());
-        pettyCashTransactionRepository.save(pettyCashTransaction);
+        BigDecimal balanceAfter = floatAccount.getCurrentBalance().subtract(request.amount());
+        floatAccount.setCurrentBalance(balanceAfter);
+        floatAccount.setActionedBy(request.actionedBy());
+        branchFloatAccountRepository.save(floatAccount);
 
-        Branch branch = savedLoan.getBranch();
-        branch.setCurrentCashFloatBalance(branch.getCurrentCashFloatBalance().subtract(request.amount()));
-        branch.setActionedBy(request.actionedBy());
-        branchRepository.save(branch);
+        BranchFloatTransaction floatTransaction = new BranchFloatTransaction();
+        floatTransaction.setBranchFloatAccount(floatAccount);
+        floatTransaction.setBranch(savedLoan.getBranch());
+        floatTransaction.setCurrency(savedLoan.getCurrency());
+        floatTransaction.setTransactionType(BranchFloatTransactionType.LOAN_REPAYMENT);
+        floatTransaction.setDirection(MoneyDirection.OUT);
+        floatTransaction.setAmount(request.amount());
+        floatTransaction.setBalanceAfter(balanceAfter);
+        floatTransaction.setTransactionDate(request.transactionDate());
+        floatTransaction.setTransactionGroupId(transactionGroupId);
+        floatTransaction.setStatus(TransactionStatus.POSTED);
+        floatTransaction.setReference(request.reference());
+        floatTransaction.setDescription("Loan repayment to investor: " + savedLoan.getInvestor().getFullName());
+        floatTransaction.setActionedBy(request.actionedBy());
+        branchFloatTransactionRepository.save(floatTransaction);
 
         return loanMapper.toLoanAccountResponse(savedLoan);
     }
@@ -194,6 +222,21 @@ public class LoanServiceImp implements LoanService {
     @Transactional(readOnly = true)
     public LoanDtos.LoanAccountResponse getLoanById(Long id) {
         return loanMapper.toLoanAccountResponse(findLoan(id));
+    }
+
+    private BranchFloatAccount findActiveFloatAccount(Long branchId, CurrencyCode currency) {
+        BranchFloatAccount floatAccount = branchFloatAccountRepository.findByBranchIdAndCurrency(branchId, currency)
+                .orElseThrow(() -> new NotFoundException("Branch float account not found for selected branch and currency"));
+
+        if (!floatAccount.isActive()) {
+            throw new IllegalArgumentException("Branch float account is inactive");
+        }
+
+        if (!floatAccount.getBranch().isActive()) {
+            throw new IllegalArgumentException("Branch is inactive");
+        }
+
+        return floatAccount;
     }
 
     @Override

@@ -30,18 +30,18 @@ public class BankAccount extends Auditable {
     @JoinColumn(name = "bank_id", nullable = false)
     private Bank bank;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "branch_id")
-    private Branch branch;
-
     @Column(name = "account_name", nullable = false, length = 150)
     private String accountName;
 
     @Column(name = "account_number", nullable = false, length = 100)
     private String accountNumber;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
-    private String currency = "USD";
+    private CurrencyCode currency;
+
+    @Column(name = "commission_interest_rate", nullable = false, precision = 10, scale = 4)
+    private BigDecimal commissionInterestRate = BigDecimal.ZERO;
 
     @Column(name = "current_balance", nullable = false, precision = 19, scale = 2)
     private BigDecimal currentBalance = BigDecimal.ZERO;

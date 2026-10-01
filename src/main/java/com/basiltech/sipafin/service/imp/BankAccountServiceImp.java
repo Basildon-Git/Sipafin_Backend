@@ -4,10 +4,9 @@ import com.basiltech.sipafin.dto.BankAccountDtos;
 import com.basiltech.sipafin.mapper.BankAccountMapper;
 import com.basiltech.sipafin.model.Bank;
 import com.basiltech.sipafin.model.BankAccount;
-import com.basiltech.sipafin.model.Branch;
+import com.basiltech.sipafin.model.CurrencyCode;
 import com.basiltech.sipafin.repository.BankAccountRepository;
 import com.basiltech.sipafin.repository.BankRepository;
-import com.basiltech.sipafin.repository.BranchRepository;
 import com.basiltech.sipafin.service.BankAccountService;
 import com.basiltech.sipafin.web.ConflictException;
 import com.basiltech.sipafin.web.NotFoundException;
@@ -24,7 +23,6 @@ public class BankAccountServiceImp implements BankAccountService {
 
     private final BankAccountRepository bankAccountRepository;
     private final BankRepository bankRepository;
-    private final BranchRepository branchRepository;
     private final BankAccountMapper bankAccountMapper;
 
     @Override
@@ -35,14 +33,12 @@ public class BankAccountServiceImp implements BankAccountService {
         }
 
         Bank bank = findActiveBank(request.bankId());
-        Branch branch = resolveBranch(request.branchId());
 
         BankAccount bankAccount = new BankAccount();
         bankAccount.setBank(bank);
-        bankAccount.setBranch(branch);
         bankAccount.setAccountName(request.accountName().trim());
         bankAccount.setAccountNumber(request.accountNumber().trim());
-        bankAccount.setCurrency(request.currency().trim().toUpperCase());
+        bankAccount.setCurrency(request.currency());
         bankAccount.setCurrentBalance(request.openingBalance());
         bankAccount.setActive(true);
         bankAccount.setActionedBy(request.actionedBy());
@@ -92,8 +88,28 @@ public class BankAccountServiceImp implements BankAccountService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<BankAccountDtos.BankAccountResponse> getBankAccountsByBranch(Long branchId) {
-        return bankAccountRepository.findByBranchId(branchId)
+    public List<BankAccountDtos.BankAccountResponse> getBankAccountsByCurrency(CurrencyCode currency) {
+        return bankAccountRepository.findByCurrency(currency)
+                .stream()
+                .sorted(Comparator.comparing(BankAccount::getId).reversed())
+                .map(bankAccountMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BankAccountDtos.BankAccountResponse> getActiveBankAccountsByCurrency(CurrencyCode currency) {
+        return bankAccountRepository.findByCurrencyAndActive(currency, true)
+                .stream()
+                .sorted(Comparator.comparing(BankAccount::getId).reversed())
+                .map(bankAccountMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BankAccountDtos.BankAccountResponse> getBankAccountsByBankAndCurrency(Long bankId, CurrencyCode currency) {
+        return bankAccountRepository.findByBankIdAndCurrency(bankId, currency)
                 .stream()
                 .sorted(Comparator.comparing(BankAccount::getId).reversed())
                 .map(bankAccountMapper::toResponse)
@@ -131,13 +147,11 @@ public class BankAccountServiceImp implements BankAccountService {
         }
 
         Bank bank = findActiveBank(request.bankId());
-        Branch branch = resolveBranch(request.branchId());
 
         bankAccount.setBank(bank);
-        bankAccount.setBranch(branch);
         bankAccount.setAccountName(request.accountName().trim());
         bankAccount.setAccountNumber(request.accountNumber().trim());
-        bankAccount.setCurrency(request.currency().trim().toUpperCase());
+        bankAccount.setCurrency(request.currency());
         bankAccount.setActive(request.active());
         bankAccount.setActionedBy(request.actionedBy());
 
@@ -176,20 +190,5 @@ public class BankAccountServiceImp implements BankAccountService {
         }
 
         return bank;
-    }
-
-    private Branch resolveBranch(Long branchId) {
-        if (branchId == null || branchId <= 0) {
-            return null;
-        }
-
-        Branch branch = branchRepository.findById(branchId)
-                .orElseThrow(() -> new NotFoundException("Branch not found"));
-
-        if (!branch.isActive()) {
-            throw new IllegalArgumentException("Branch is inactive");
-        }
-
-        return branch;
     }
 }

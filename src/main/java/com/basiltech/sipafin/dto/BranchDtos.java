@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 
 public class BranchDtos {
@@ -59,7 +58,6 @@ public class BranchDtos {
             String name,
             String code,
             String location,
-            BigDecimal currentCashFloatBalance,
             boolean active,
             String actionedBy,
             Instant createdAt,

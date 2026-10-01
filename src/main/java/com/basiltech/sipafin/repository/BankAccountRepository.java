@@ -1,6 +1,7 @@
 package com.basiltech.sipafin.repository;
 
 import com.basiltech.sipafin.model.BankAccount;
+import com.basiltech.sipafin.model.CurrencyCode;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -16,9 +17,13 @@ public interface BankAccountRepository extends JpaRepository<BankAccount, Long> 
 
     List<BankAccount> findByActive(boolean active);
 
+    List<BankAccount> findByCurrency(CurrencyCode currency);
+
+    List<BankAccount> findByCurrencyAndActive(CurrencyCode currency, boolean active);
+
     List<BankAccount> findByBankId(Long bankId);
 
-    List<BankAccount> findByBranchId(Long branchId);
+    List<BankAccount> findByBankIdAndCurrency(Long bankId, CurrencyCode currency);
 
     List<BankAccount> findByAccountNameContainingIgnoreCaseOrAccountNumberContainingIgnoreCase(
             String accountName,

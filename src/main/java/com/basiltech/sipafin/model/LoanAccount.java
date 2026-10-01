@@ -33,8 +33,21 @@ public class LoanAccount extends Auditable {
     @JoinColumn(name = "branch_id", nullable = false)
     private Branch branch;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private CurrencyCode currency;
+
     @Column(name = "principal_amount", nullable = false, precision = 19, scale = 2)
     private BigDecimal principalAmount = BigDecimal.ZERO;
+
+    @Column(name = "interest_rate", nullable = false, precision = 10, scale = 4)
+    private BigDecimal interestRate = BigDecimal.ZERO;
+
+    @Column(name = "interest_amount", nullable = false, precision = 19, scale = 2)
+    private BigDecimal interestAmount = BigDecimal.ZERO;
+
+    @Column(name = "total_payable", nullable = false, precision = 19, scale = 2)
+    private BigDecimal totalPayable = BigDecimal.ZERO;
 
     @Column(name = "outstanding_balance", nullable = false, precision = 19, scale = 2)
     private BigDecimal outstandingBalance = BigDecimal.ZERO;

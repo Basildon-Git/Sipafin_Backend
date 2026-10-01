@@ -35,6 +35,10 @@ public class LoanTransaction extends Auditable {
     private Branch branch;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private CurrencyCode currency;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "transaction_type", nullable = false, length = 50)
     private LoanTransactionType transactionType;
 

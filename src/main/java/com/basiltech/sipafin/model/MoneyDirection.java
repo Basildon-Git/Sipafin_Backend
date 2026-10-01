@@ -1,6 +1,6 @@
 package com.basiltech.sipafin.model;
 
-public enum CashDirection {
+public enum MoneyDirection {
     IN,
     OUT
 }

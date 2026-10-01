@@ -1,4 +1,30 @@
 package com.basiltech.sipafin.model;
 
-public class BranchFloatTransactionType {
+public enum BranchFloatTransactionType {
+    OPENING_BALANCE,
+
+    BANK_DEPOSIT,
+    BANK_WITHDRAWAL,
+
+    BRANCH_TRANSFER_IN,
+    BRANCH_TRANSFER_OUT,
+
+    LOAN_RECEIVED,
+    LOAN_REPAYMENT,
+
+    COMMISSION_RECEIVED,
+
+    EXPENSE,
+
+    CURRENCY_EXCHANGE_IN,
+    CURRENCY_EXCHANGE_OUT,
+
+    CASH_SALE_IN,
+    CASH_SALE_OUT,
+
+    CLIENT_LOAN_ISSUED,
+    CLIENT_LOAN_REPAYMENT,
+
+    ADJUSTMENT,
+    REVERSAL
 }
