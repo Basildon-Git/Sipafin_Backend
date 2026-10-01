@@ -59,7 +59,7 @@ public class SecurityConfig {
 
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:4200"));
+        configuration.setAllowedOrigins(List.of("http://localhost:4200", "https://sipafin-frontend-sepia.vercel.app/", "https://shakenoak.co.zw", "http://shakenoak.co.zw"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD", "TRACE"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
