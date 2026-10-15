@@ -20,7 +20,6 @@ public class LoanDtos {
             @NotNull(message = "Investor ID is required")
             Long investorId,
 
-            @NotNull(message = "Branch ID is required")
             Long branchId,
 
             @NotNull(message = "Currency is required")
@@ -38,6 +37,8 @@ public class LoanDtos {
             LocalDate dateReceived,
 
             LocalDate dueDate,
+
+            boolean affectBalances,
 
             @Size(max = 100, message = "Reference must not exceed 100 characters")
             String reference,

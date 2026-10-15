@@ -14,4 +14,6 @@ public interface BankReconciliationRepository extends JpaRepository<BankReconcil
     List<BankReconciliation> findByBranchIdAndCurrency(Long branchId, CurrencyCode currency);
 
     List<BankReconciliation> findByReconciliationDate(LocalDate reconciliationDate);
+
+    List<BankReconciliation> findByReconciliationDateBetween(LocalDate fromDate, LocalDate toDate);
 }

@@ -17,13 +17,43 @@ public class BankReconciliationController {
     private final BankReconciliationService bankReconciliationService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<?>> reconcile(
-            @Valid @RequestBody BankReconciliationDtos.ReconcileBankAccountRequest request
+    public ResponseEntity<ApiResponse<?>> startReconciliation(
+            @Valid @RequestBody BankReconciliationDtos.StartBankReconciliationRequest request
     ) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(
                 HttpStatus.CREATED.value(),
-                "Bank reconciliation posted successfully",
-                bankReconciliationService.reconcile(request)
+                "Bank reconciliation started successfully",
+                bankReconciliationService.startReconciliation(request)
+        ));
+    }
+
+    @PostMapping("/{reconciliationId}/items")
+    public ResponseEntity<ApiResponse<?>> addReconciliationItem(
+            @PathVariable Long reconciliationId,
+            @Valid @RequestBody BankReconciliationDtos.AddReconciliationItemRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(
+                HttpStatus.CREATED.value(),
+                "Bank reconciliation item posted successfully",
+                bankReconciliationService.addReconciliationItem(reconciliationId, request)
+        ));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<?>> getReconciliationById(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.of(
+                HttpStatus.OK.value(),
+                "Bank reconciliation fetched successfully",
+                bankReconciliationService.getReconciliationById(id)
+        ));
+    }
+
+    @GetMapping("/{reconciliationId}/items")
+    public ResponseEntity<ApiResponse<?>> getReconciliationItems(@PathVariable Long reconciliationId) {
+        return ResponseEntity.ok(ApiResponse.of(
+                HttpStatus.OK.value(),
+                "Bank reconciliation items fetched successfully",
+                bankReconciliationService.getReconciliationItems(reconciliationId)
         ));
     }
 
@@ -33,6 +63,15 @@ public class BankReconciliationController {
                 HttpStatus.OK.value(),
                 "Bank reconciliations fetched successfully",
                 bankReconciliationService.getReconciliationsByBankAccount(bankAccountId)
+        ));
+    }
+
+    @GetMapping("/all")
+    public ResponseEntity<ApiResponse<?>> getAllReconciliations() {
+        return ResponseEntity.ok(ApiResponse.of(
+                HttpStatus.OK.value(),
+                "Bank reconciliations fetched successfully",
+                bankReconciliationService.getAllReconciliations()
         ));
     }
 }

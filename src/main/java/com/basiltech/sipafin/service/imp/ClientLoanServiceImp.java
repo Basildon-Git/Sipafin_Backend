@@ -42,58 +42,62 @@ public class ClientLoanServiceImp implements ClientLoanService {
 
         BankAccount fundingBankAccount = null;
 
-        if (request.fundingSource() == MoneySourceType.BRANCH_FLOAT) {
-            BranchFloatAccount floatAccount = findActiveFloatAccount(request.branchId(), request.currency());
-            ensureEnoughFloatBalance(floatAccount, request.principalAmount());
+        if (request.affectBalances()) {
+            if (request.fundingSource() == MoneySourceType.BRANCH_FLOAT) {
+                BranchFloatAccount floatAccount = findActiveFloatAccount(request.branchId(), request.currency());
+                ensureEnoughFloatBalance(floatAccount, request.principalAmount());
 
-            BigDecimal balanceAfter = floatAccount.getCurrentBalance().subtract(request.principalAmount());
-            floatAccount.setCurrentBalance(balanceAfter);
-            floatAccount.setActionedBy(request.actionedBy());
-            branchFloatAccountRepository.save(floatAccount);
+                BigDecimal balanceAfter = floatAccount.getCurrentBalance().subtract(request.principalAmount());
+                floatAccount.setCurrentBalance(balanceAfter);
+                floatAccount.setActionedBy(request.actionedBy());
+                branchFloatAccountRepository.save(floatAccount);
 
-            BranchFloatTransaction floatTransaction = new BranchFloatTransaction();
-            floatTransaction.setBranchFloatAccount(floatAccount);
-            floatTransaction.setBranch(branch);
-            floatTransaction.setCurrency(request.currency());
-            floatTransaction.setTransactionType(BranchFloatTransactionType.CLIENT_LOAN_ISSUED);
-            floatTransaction.setDirection(MoneyDirection.OUT);
-            floatTransaction.setAmount(request.principalAmount());
-            floatTransaction.setBalanceAfter(balanceAfter);
-            floatTransaction.setTransactionDate(request.dateIssued());
-            floatTransaction.setTransactionGroupId(transactionGroupId);
-            floatTransaction.setStatus(TransactionStatus.POSTED);
-            floatTransaction.setReference(request.reference());
-            floatTransaction.setDescription(request.description());
-            floatTransaction.setActionedBy(request.actionedBy());
-            branchFloatTransactionRepository.save(floatTransaction);
-        } else {
-            if (request.fundingBankAccountId() == null) {
-                throw new IllegalArgumentException("Funding bank account ID is required when funding source is BANK_ACCOUNT");
+                BranchFloatTransaction floatTransaction = new BranchFloatTransaction();
+                floatTransaction.setBranchFloatAccount(floatAccount);
+                floatTransaction.setBranch(branch);
+                floatTransaction.setCurrency(request.currency());
+                floatTransaction.setTransactionType(BranchFloatTransactionType.CLIENT_LOAN_ISSUED);
+                floatTransaction.setDirection(MoneyDirection.OUT);
+                floatTransaction.setAmount(request.principalAmount());
+                floatTransaction.setBalanceAfter(balanceAfter);
+                floatTransaction.setTransactionDate(request.dateIssued());
+                floatTransaction.setTransactionGroupId(transactionGroupId);
+                floatTransaction.setStatus(TransactionStatus.POSTED);
+                floatTransaction.setReference(request.reference());
+                floatTransaction.setDescription(request.description());
+                floatTransaction.setActionedBy(request.actionedBy());
+                branchFloatTransactionRepository.save(floatTransaction);
+            } else {
+                if (request.fundingBankAccountId() == null) {
+                    throw new IllegalArgumentException("Funding bank account ID is required when funding source is BANK_ACCOUNT");
+                }
+
+                fundingBankAccount = findActiveBankAccount(request.fundingBankAccountId(), request.currency());
+                ensureEnoughBankBalance(fundingBankAccount, request.principalAmount());
+
+                BigDecimal balanceAfter = fundingBankAccount.getCurrentBalance().subtract(request.principalAmount());
+                fundingBankAccount.setCurrentBalance(balanceAfter);
+                fundingBankAccount.setActionedBy(request.actionedBy());
+                bankAccountRepository.save(fundingBankAccount);
+
+                BankTransaction bankTransaction = new BankTransaction();
+                bankTransaction.setBankAccount(fundingBankAccount);
+                bankTransaction.setBranch(branch);
+                bankTransaction.setCurrency(request.currency());
+                bankTransaction.setTransactionType(BankLedgerTransactionType.CLIENT_LOAN_ISSUED);
+                bankTransaction.setDirection(MoneyDirection.OUT);
+                bankTransaction.setAmount(request.principalAmount());
+                bankTransaction.setBalanceAfter(balanceAfter);
+                bankTransaction.setTransactionDate(request.dateIssued());
+                bankTransaction.setTransactionGroupId(transactionGroupId);
+                bankTransaction.setStatus(TransactionStatus.POSTED);
+                bankTransaction.setReference(request.reference());
+                bankTransaction.setDescription(request.description());
+                bankTransaction.setActionedBy(request.actionedBy());
+                bankTransactionRepository.save(bankTransaction);
             }
-
+        } else if (request.fundingSource() == MoneySourceType.BANK_ACCOUNT && request.fundingBankAccountId() != null) {
             fundingBankAccount = findActiveBankAccount(request.fundingBankAccountId(), request.currency());
-            ensureEnoughBankBalance(fundingBankAccount, request.principalAmount());
-
-            BigDecimal balanceAfter = fundingBankAccount.getCurrentBalance().subtract(request.principalAmount());
-            fundingBankAccount.setCurrentBalance(balanceAfter);
-            fundingBankAccount.setActionedBy(request.actionedBy());
-            bankAccountRepository.save(fundingBankAccount);
-
-            BankTransaction bankTransaction = new BankTransaction();
-            bankTransaction.setBankAccount(fundingBankAccount);
-            bankTransaction.setBranch(branch);
-            bankTransaction.setCurrency(request.currency());
-            bankTransaction.setTransactionType(BankLedgerTransactionType.CLIENT_LOAN_ISSUED);
-            bankTransaction.setDirection(MoneyDirection.OUT);
-            bankTransaction.setAmount(request.principalAmount());
-            bankTransaction.setBalanceAfter(balanceAfter);
-            bankTransaction.setTransactionDate(request.dateIssued());
-            bankTransaction.setTransactionGroupId(transactionGroupId);
-            bankTransaction.setStatus(TransactionStatus.POSTED);
-            bankTransaction.setReference(request.reference());
-            bankTransaction.setDescription(request.description());
-            bankTransaction.setActionedBy(request.actionedBy());
-            bankTransactionRepository.save(bankTransaction);
         }
 
         ClientLoanAccount account = new ClientLoanAccount();

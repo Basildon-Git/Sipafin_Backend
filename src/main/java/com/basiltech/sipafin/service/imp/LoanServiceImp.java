@@ -31,7 +31,6 @@ public class LoanServiceImp implements LoanService {
     public LoanDtos.LoanAccountResponse receiveLoan(LoanDtos.ReceiveLoanRequest request) {
         Investor investor = findActiveInvestor(request.investorId());
         Branch branch = findActiveBranch(request.branchId());
-        BranchFloatAccount floatAccount = findActiveFloatAccount(request.branchId(), request.currency());
         String transactionGroupId = "TXN-" + java.util.UUID.randomUUID();
 
         LoanAccount loanAccount = new LoanAccount();
@@ -70,26 +69,30 @@ public class LoanServiceImp implements LoanService {
         loanTransaction.setActionedBy(request.actionedBy());
         loanTransactionRepository.save(loanTransaction);
 
-        BigDecimal balanceAfter = floatAccount.getCurrentBalance().add(request.principalAmount());
-        floatAccount.setCurrentBalance(balanceAfter);
-        floatAccount.setActionedBy(request.actionedBy());
-        branchFloatAccountRepository.save(floatAccount);
+        if (request.affectBalances()) {
+            BranchFloatAccount floatAccount = findActiveFloatAccount(request.branchId(), request.currency());
 
-        BranchFloatTransaction floatTransaction = new BranchFloatTransaction();
-        floatTransaction.setBranchFloatAccount(floatAccount);
-        floatTransaction.setBranch(branch);
-        floatTransaction.setCurrency(request.currency());
-        floatTransaction.setTransactionType(BranchFloatTransactionType.LOAN_RECEIVED);
-        floatTransaction.setDirection(MoneyDirection.IN);
-        floatTransaction.setAmount(request.principalAmount());
-        floatTransaction.setBalanceAfter(balanceAfter);
-        floatTransaction.setTransactionDate(request.dateReceived());
-        floatTransaction.setTransactionGroupId(transactionGroupId);
-        floatTransaction.setStatus(TransactionStatus.POSTED);
-        floatTransaction.setReference(request.reference());
-        floatTransaction.setDescription("Loan received from investor: " + investor.getFullName());
-        floatTransaction.setActionedBy(request.actionedBy());
-        branchFloatTransactionRepository.save(floatTransaction);
+            BigDecimal balanceAfter = floatAccount.getCurrentBalance().add(request.principalAmount());
+            floatAccount.setCurrentBalance(balanceAfter);
+            floatAccount.setActionedBy(request.actionedBy());
+            branchFloatAccountRepository.save(floatAccount);
+
+            BranchFloatTransaction floatTransaction = new BranchFloatTransaction();
+            floatTransaction.setBranchFloatAccount(floatAccount);
+            floatTransaction.setBranch(branch);
+            floatTransaction.setCurrency(request.currency());
+            floatTransaction.setTransactionType(BranchFloatTransactionType.LOAN_RECEIVED);
+            floatTransaction.setDirection(MoneyDirection.IN);
+            floatTransaction.setAmount(request.principalAmount());
+            floatTransaction.setBalanceAfter(balanceAfter);
+            floatTransaction.setTransactionDate(request.dateReceived());
+            floatTransaction.setTransactionGroupId(transactionGroupId);
+            floatTransaction.setStatus(TransactionStatus.POSTED);
+            floatTransaction.setReference(request.reference());
+            floatTransaction.setDescription("Loan received from investor: " + investor.getFullName());
+            floatTransaction.setActionedBy(request.actionedBy());
+            branchFloatTransactionRepository.save(floatTransaction);
+        }
 
         return loanMapper.toLoanAccountResponse(savedLoan);
     }

@@ -1,7 +1,9 @@
 package com.basiltech.sipafin.model;
 
 public enum ReconciliationStatus {
+    DRAFT,
     BALANCED,
-    ADJUSTED,
-    UNRESOLVED
+    PARTIALLY_RECONCILED,
+    UNRESOLVED,
+    CANCELLED
 }

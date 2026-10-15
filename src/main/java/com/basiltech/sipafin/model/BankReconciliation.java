@@ -31,8 +31,8 @@ public class BankReconciliation extends Auditable {
     @JoinColumn(name = "bank_account_id", nullable = false)
     private BankAccount bankAccount;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "branch_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "branch_id")
     private Branch branch;
 
     @Enumerated(EnumType.STRING)
@@ -51,8 +51,15 @@ public class BankReconciliation extends Auditable {
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal difference;
 
-    @Column(name = "adjustment_applied", nullable = false)
-    private boolean adjustmentApplied;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "difference_type", nullable = false, length = 50)
+    private ReconciliationDifferenceType differenceType;
+
+    @Column(name = "reconciled_amount", nullable = false, precision = 19, scale = 2)
+    private BigDecimal reconciledAmount = BigDecimal.ZERO;
+
+    @Column(name = "unreconciled_amount", nullable = false, precision = 19, scale = 2)
+    private BigDecimal unreconciledAmount = BigDecimal.ZERO;
 
     @Column(name = "system_balance_after", nullable = false, precision = 19, scale = 2)
     private BigDecimal systemBalanceAfter;

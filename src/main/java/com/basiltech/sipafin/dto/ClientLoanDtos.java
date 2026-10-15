@@ -25,7 +25,6 @@ public class ClientLoanDtos {
             @Size(max = 150, message = "Client name must not exceed 150 characters")
             String clientName,
 
-            @NotBlank(message = "Client phone is required")
             @Size(max = 50, message = "Client phone must not exceed 50 characters")
             String clientPhone,
 
@@ -49,6 +48,8 @@ public class ClientLoanDtos {
             LocalDate dateIssued,
 
             LocalDate dueDate,
+
+            boolean affectBalances,
 
             @Size(max = 100, message = "Reference must not exceed 100 characters")
             String reference,
