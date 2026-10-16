@@ -691,7 +691,8 @@ public class MoneyMovementServiceImp implements MoneyMovementService {
 
     private void ensureEnoughBankBalance(BankAccount bankAccount, BigDecimal amount) {
         if (bankAccount.getCurrentBalance().compareTo(amount) < 0) {
-            throw new IllegalArgumentException("Insufficient bank account balance");
+//            throw new IllegalArgumentException("Insufficient bank account balance");
+
         }
     }
 
