@@ -36,6 +36,9 @@ public class BranchFloatDtos {
             @NotNull(message = "Currency is required")
             CurrencyCode currency,
 
+            @DecimalMin(value = "0.00", message = "Opening balance cannot be negative")
+            BigDecimal openingBalance,
+
             boolean active,
 
             @NotBlank(message = "Actioned by is required")

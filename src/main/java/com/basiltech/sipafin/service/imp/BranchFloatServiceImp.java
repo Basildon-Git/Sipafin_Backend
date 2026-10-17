@@ -87,6 +87,7 @@ public class BranchFloatServiceImp implements BranchFloatService {
 
         floatAccount.setBranch(branch);
         floatAccount.setCurrency(request.currency());
+        floatAccount.setCurrentBalance(request.openingBalance());
         floatAccount.setActive(request.active());
         floatAccount.setActionedBy(request.actionedBy());
 

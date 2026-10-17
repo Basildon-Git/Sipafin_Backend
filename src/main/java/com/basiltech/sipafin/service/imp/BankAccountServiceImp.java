@@ -152,6 +152,7 @@ public class BankAccountServiceImp implements BankAccountService {
         bankAccount.setAccountName(request.accountName().trim());
         bankAccount.setAccountNumber(request.accountNumber().trim());
         bankAccount.setCurrency(request.currency());
+        bankAccount.setCurrentBalance(request.openingBalance());
         bankAccount.setActive(request.active());
         bankAccount.setActionedBy(request.actionedBy());
 
