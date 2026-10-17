@@ -63,6 +63,49 @@ public class BranchFloatServiceImp implements BranchFloatService {
 
     @Override
     @Transactional(readOnly = true)
+    public BranchFloatDtos.BranchFloatAccountResponse getFloatAccountById(Long id) {
+        return branchFloatMapper.toResponse(findFloatAccount(id));
+    }
+
+    @Override
+    @Transactional
+    public BranchFloatDtos.BranchFloatAccountResponse updateFloatAccount(
+            Long id,
+            BranchFloatDtos.UpdateBranchFloatAccountRequest request
+    ) {
+        BranchFloatAccount floatAccount = findFloatAccount(id);
+        Branch branch = findActiveBranch(request.branchId());
+
+        boolean sameBranchAndCurrency =
+                floatAccount.getBranch().getId().equals(request.branchId())
+                        && floatAccount.getCurrency().equals(request.currency());
+
+        if (!sameBranchAndCurrency
+                && branchFloatAccountRepository.existsByBranchIdAndCurrency(request.branchId(), request.currency())) {
+            throw new ConflictException("Float account already exists for this branch and currency");
+        }
+
+        floatAccount.setBranch(branch);
+        floatAccount.setCurrency(request.currency());
+        floatAccount.setActive(request.active());
+        floatAccount.setActionedBy(request.actionedBy());
+
+        return branchFloatMapper.toResponse(branchFloatAccountRepository.save(floatAccount));
+    }
+
+    private Branch findActiveBranch(Long branchId) {
+        Branch branch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new NotFoundException("Branch not found"));
+
+        if (!branch.isActive()) {
+            throw new IllegalArgumentException("Branch is inactive");
+        }
+
+        return branch;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<BranchFloatDtos.BranchFloatAccountResponse> getFloatAccountsByBranch(Long branchId) {
         return branchFloatAccountRepository.findByBranchId(branchId)
                 .stream()

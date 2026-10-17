@@ -217,4 +217,16 @@ public class MoneyMovementController {
                 moneyMovementService.getBankTransactionsByAccountAndCurrency(bankAccountId, currency)
         ));
     }
+
+    @PostMapping("/revenue")
+    public ResponseEntity<ApiResponse<?>> receiveRevenue(
+            @Valid @RequestBody MoneyMovementDtos.RevenueReceiptRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(
+                HttpStatus.CREATED.value(),
+                "Revenue received successfully",
+                moneyMovementService.receiveRevenue(request)
+        ));
+    }
+
 }

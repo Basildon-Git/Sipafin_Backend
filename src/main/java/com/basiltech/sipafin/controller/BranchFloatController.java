@@ -38,6 +38,27 @@ public class BranchFloatController {
         ));
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<?>> getFloatAccountById(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.of(
+                HttpStatus.OK.value(),
+                "Branch float account fetched successfully",
+                branchFloatService.getFloatAccountById(id)
+        ));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<?>> updateFloatAccount(
+            @PathVariable Long id,
+            @Valid @RequestBody BranchFloatDtos.UpdateBranchFloatAccountRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.of(
+                HttpStatus.OK.value(),
+                "Branch float account updated successfully",
+                branchFloatService.updateFloatAccount(id, request)
+        ));
+    }
+
     @GetMapping("/branch/{branchId}")
     public ResponseEntity<ApiResponse<?>> getFloatAccountsByBranch(@PathVariable Long branchId) {
         return ResponseEntity.ok(ApiResponse.of(

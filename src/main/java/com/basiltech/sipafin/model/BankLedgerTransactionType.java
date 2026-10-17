@@ -16,5 +16,7 @@ public enum BankLedgerTransactionType {
     RECONCILIATION_ADJUSTMENT,
 
     ADJUSTMENT,
-    REVERSAL
+    REVERSAL,
+
+    REVENUE_RECEIPT
 }

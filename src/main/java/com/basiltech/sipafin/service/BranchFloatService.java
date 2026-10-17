@@ -13,6 +13,13 @@ public interface BranchFloatService {
 
     List<BranchFloatDtos.BranchFloatAccountResponse> getAllFloatAccounts();
 
+    BranchFloatDtos.BranchFloatAccountResponse getFloatAccountById(Long id);
+
+    BranchFloatDtos.BranchFloatAccountResponse updateFloatAccount(
+            Long id,
+            BranchFloatDtos.UpdateBranchFloatAccountRequest request
+    );
+
     List<BranchFloatDtos.BranchFloatAccountResponse> getFloatAccountsByBranch(Long branchId);
 
     List<BranchFloatDtos.BranchFloatAccountResponse> getFloatAccountsByCurrency(CurrencyCode currency);

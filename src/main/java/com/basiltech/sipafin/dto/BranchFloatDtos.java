@@ -29,6 +29,21 @@ public class BranchFloatDtos {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    public record UpdateBranchFloatAccountRequest(
+            @NotNull(message = "Branch ID is required")
+            Long branchId,
+
+            @NotNull(message = "Currency is required")
+            CurrencyCode currency,
+
+            boolean active,
+
+            @NotBlank(message = "Actioned by is required")
+            String actionedBy
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record BranchFloatStatusRequest(
             @NotBlank(message = "Actioned by is required")
             String actionedBy

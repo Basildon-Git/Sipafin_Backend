@@ -26,5 +26,7 @@ public enum BranchFloatTransactionType {
     CLIENT_LOAN_REPAYMENT,
 
     ADJUSTMENT,
-    REVERSAL
+    REVERSAL,
+
+    REVENUE_RECEIPT
 }

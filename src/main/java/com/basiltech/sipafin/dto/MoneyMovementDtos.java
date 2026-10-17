@@ -161,48 +161,6 @@ public class MoneyMovementDtos {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record CurrencyExchangeRequest(
-            @NotNull(message = "Branch ID is required")
-            Long branchId,
-
-            @NotNull(message = "Received currency is required")
-            CurrencyCode receivedCurrency,
-
-            @NotNull(message = "Received amount is required")
-            @DecimalMin(value = "0.01", message = "Received amount must be greater than zero")
-            BigDecimal receivedAmount,
-
-            @NotNull(message = "Paid currency is required")
-            CurrencyCode paidCurrency,
-
-            @NotNull(message = "Paid amount is required")
-            @DecimalMin(value = "0.01", message = "Paid amount must be greater than zero")
-            BigDecimal paidAmount,
-
-            @NotNull(message = "Exchange rate is required")
-            @DecimalMin(value = "0.0001", message = "Exchange rate must be greater than zero")
-            BigDecimal exchangeRate,
-
-            @NotNull(message = "Paid from source is required")
-            MoneySourceType paidFrom,
-
-            Long paidBankAccountId,
-
-            @NotNull(message = "Transaction date is required")
-            LocalDate transactionDate,
-
-            @Size(max = 100)
-            String reference,
-
-            @Size(max = 255)
-            String description,
-
-            @NotBlank(message = "Actioned by is required")
-            String actionedBy
-    ) {
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
     public record FloatAdjustmentRequest(
             @NotNull(message = "Branch ID is required")
             Long branchId,
@@ -251,6 +209,81 @@ public class MoneyMovementDtos {
 
             @NotNull(message = "Transaction date is required")
             LocalDate transactionDate,
+
+            @Size(max = 100)
+            String reference,
+
+            @Size(max = 255)
+            String description,
+
+            @NotBlank(message = "Actioned by is required")
+            String actionedBy
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record CurrencyExchangeRequest(
+            @NotNull(message = "Branch ID is required")
+            Long branchId,
+
+            @NotNull(message = "Received currency is required")
+            CurrencyCode receivedCurrency,
+
+            @NotNull(message = "Received amount is required")
+            @DecimalMin(value = "0.01", message = "Received amount must be greater than zero")
+            BigDecimal receivedAmount,
+
+            @NotNull(message = "Paid currency is required")
+            CurrencyCode paidCurrency,
+
+            @DecimalMin(value = "0.01", message = "Paid amount must be greater than zero")
+            BigDecimal paidAmount,
+
+            @NotNull(message = "Exchange rate is required")
+            @DecimalMin(value = "0.0001", message = "Exchange rate must be greater than zero")
+            BigDecimal exchangeRate,
+
+            @NotNull(message = "Paid from source is required")
+            MoneySourceType paidFrom,
+
+            Long paidBankAccountId,
+
+            @NotNull(message = "Transaction date is required")
+            LocalDate transactionDate,
+
+            @Size(max = 100)
+            String reference,
+
+            @Size(max = 255)
+            String description,
+
+            @NotBlank(message = "Actioned by is required")
+            String actionedBy
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record RevenueReceiptRequest(
+            @NotNull(message = "Branch ID is required")
+            Long branchId,
+
+            @NotNull(message = "Currency is required")
+            CurrencyCode currency,
+
+            @NotNull(message = "Revenue source is required")
+            MoneySourceType source,
+
+            Long bankAccountId,
+
+            @NotNull(message = "Amount is required")
+            @DecimalMin(value = "0.01", message = "Amount must be greater than zero")
+            BigDecimal amount,
+
+            @NotNull(message = "Revenue date is required")
+            LocalDate revenueDate,
+
+            @NotNull(message = "Revenue category is required")
+            RevenueCategory category,
 
             @Size(max = 100)
             String reference,
@@ -332,6 +365,28 @@ public class MoneyMovementDtos {
             BranchFloatTransactionResponse receivedFloatTransaction,
             BranchFloatTransactionResponse paidFloatTransaction,
             BankTransactionResponse paidBankTransaction
+    ) {
+    }
+
+    public record RevenueResponse(
+            Long id,
+            Long branchId,
+            String branchName,
+            Long bankAccountId,
+            String bankName,
+            String accountName,
+            CurrencyCode currency,
+            RevenueCategory category,
+            MoneySourceType source,
+            BigDecimal amount,
+            LocalDate revenueDate,
+            String transactionGroupId,
+            RevenueStatus status,
+            String reference,
+            String description,
+            String actionedBy,
+            Instant createdAt,
+            Instant updatedAt
     ) {
     }
 }

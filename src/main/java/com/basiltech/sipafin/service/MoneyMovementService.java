@@ -86,4 +86,9 @@ public interface MoneyMovementService {
             Long branchId,
             CurrencyCode currency
     );
+
+    MoneyMovementDtos.RevenueResponse receiveRevenue(
+            MoneyMovementDtos.RevenueReceiptRequest request
+    );
+
 }

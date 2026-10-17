@@ -30,6 +30,7 @@ public class MoneyMovementServiceImp implements MoneyMovementService {
     private final CommissionMapper commissionMapper;
     private final BankCommissionAccountRepository bankCommissionAccountRepository;
     private final CommissionRepository commissionRepository;
+    private final RevenueRepository revenueRepository;
 
     @Override
     @Transactional
@@ -310,6 +311,10 @@ public class MoneyMovementServiceImp implements MoneyMovementService {
             throw new IllegalArgumentException("Received currency and paid currency cannot be the same");
         }
 
+        BigDecimal paidAmount = request.paidAmount() == null
+                ? request.receivedAmount().multiply(request.exchangeRate())
+                : request.paidAmount();
+
         BranchFloatAccount receivedFloat = findActiveFloatAccount(request.branchId(), request.receivedCurrency());
         String groupId = generateGroupId();
 
@@ -330,13 +335,13 @@ public class MoneyMovementServiceImp implements MoneyMovementService {
 
         if (request.paidFrom() == MoneySourceType.BRANCH_FLOAT) {
             BranchFloatAccount paidFloat = findActiveFloatAccount(request.branchId(), request.paidCurrency());
-            ensureEnoughFloatBalance(paidFloat, request.paidAmount());
+            ensureEnoughFloatBalance(paidFloat, paidAmount);
 
             paidFloatTransaction = postFloatTransaction(
                     paidFloat,
                     BranchFloatTransactionType.CURRENCY_EXCHANGE_OUT,
                     MoneyDirection.OUT,
-                    request.paidAmount(),
+                    paidAmount,
                     request.transactionDate(),
                     groupId,
                     request.reference(),
@@ -349,14 +354,14 @@ public class MoneyMovementServiceImp implements MoneyMovementService {
             }
 
             BankAccount paidBankAccount = findActiveBankAccount(request.paidBankAccountId(), request.paidCurrency());
-            ensureEnoughBankBalance(paidBankAccount, request.paidAmount());
+            ensureEnoughBankBalance(paidBankAccount, paidAmount);
 
             paidBankTransaction = postBankTransaction(
                     paidBankAccount,
                     receivedFloat.getBranch(),
                     BankLedgerTransactionType.CURRENCY_EXCHANGE_OUT,
                     MoneyDirection.OUT,
-                    request.paidAmount(),
+                    paidAmount,
                     request.transactionDate(),
                     groupId,
                     request.reference(),
@@ -636,6 +641,93 @@ public class MoneyMovementServiceImp implements MoneyMovementService {
         transaction.setActionedBy(actionedBy);
 
         return bankTransactionRepository.save(transaction);
+    }
+
+    @Override
+    @Transactional
+    public MoneyMovementDtos.RevenueResponse receiveRevenue(
+            MoneyMovementDtos.RevenueReceiptRequest request
+    ) {
+        Branch branch = findActiveBranch(request.branchId());
+        String groupId = generateGroupId();
+
+        BankAccount bankAccount = null;
+
+        if (request.source() == MoneySourceType.BRANCH_FLOAT) {
+            BranchFloatAccount floatAccount = findActiveFloatAccount(request.branchId(), request.currency());
+
+            postFloatTransaction(
+                    floatAccount,
+                    BranchFloatTransactionType.REVENUE_RECEIPT,
+                    MoneyDirection.IN,
+                    request.amount(),
+                    request.revenueDate(),
+                    groupId,
+                    request.reference(),
+                    request.description(),
+                    request.actionedBy()
+            );
+        } else {
+            if (request.bankAccountId() == null) {
+                throw new IllegalArgumentException("Bank account ID is required when revenue source is BANK_ACCOUNT");
+            }
+
+            bankAccount = findActiveBankAccount(request.bankAccountId(), request.currency());
+
+            postBankTransaction(
+                    bankAccount,
+                    branch,
+                    BankLedgerTransactionType.REVENUE_RECEIPT,
+                    MoneyDirection.IN,
+                    request.amount(),
+                    request.revenueDate(),
+                    groupId,
+                    request.reference(),
+                    request.description(),
+                    request.actionedBy()
+            );
+        }
+
+        Revenue revenue = new Revenue();
+        revenue.setBranch(branch);
+        revenue.setBankAccount(bankAccount);
+        revenue.setCurrency(request.currency());
+        revenue.setCategory(request.category());
+        revenue.setSource(request.source());
+        revenue.setAmount(request.amount());
+        revenue.setRevenueDate(request.revenueDate());
+        revenue.setTransactionGroupId(groupId);
+        revenue.setStatus(RevenueStatus.POSTED);
+        revenue.setReference(request.reference());
+        revenue.setDescription(request.description());
+        revenue.setActionedBy(request.actionedBy());
+
+        return toRevenueResponse(revenueRepository.save(revenue));
+    }
+
+    private MoneyMovementDtos.RevenueResponse toRevenueResponse(Revenue revenue) {
+        BankAccount bankAccount = revenue.getBankAccount();
+
+        return new MoneyMovementDtos.RevenueResponse(
+                revenue.getId(),
+                revenue.getBranch().getId(),
+                revenue.getBranch().getName(),
+                bankAccount == null ? null : bankAccount.getId(),
+                bankAccount == null ? null : bankAccount.getBank().getName(),
+                bankAccount == null ? null : bankAccount.getAccountName(),
+                revenue.getCurrency(),
+                revenue.getCategory(),
+                revenue.getSource(),
+                revenue.getAmount(),
+                revenue.getRevenueDate(),
+                revenue.getTransactionGroupId(),
+                revenue.getStatus(),
+                revenue.getReference(),
+                revenue.getDescription(),
+                revenue.getActionedBy(),
+                revenue.getCreatedAt(),
+                revenue.getUpdatedAt()
+        );
     }
 
     private BranchFloatAccount findActiveFloatAccount(Long branchId, CurrencyCode currency) {
