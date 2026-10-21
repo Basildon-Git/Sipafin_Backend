@@ -75,6 +75,17 @@ public class MoneyMovementController {
         ));
     }
 
+    @PostMapping("/transfers")
+    public ResponseEntity<ApiResponse<?>> transferBetweenAccounts(
+            @Valid @RequestBody MoneyMovementDtos.AccountTransferRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(
+                HttpStatus.CREATED.value(),
+                "Transfer posted successfully",
+                moneyMovementService.transferBetweenAccounts(request)
+        ));
+    }
+
     @PostMapping("/expense/from-float")
     public ResponseEntity<ApiResponse<?>> payExpenseFromFloat(
             @Valid @RequestBody MoneyMovementDtos.ExpensePaymentRequest request
@@ -226,6 +237,60 @@ public class MoneyMovementController {
                 HttpStatus.CREATED.value(),
                 "Revenue received successfully",
                 moneyMovementService.receiveRevenue(request)
+        ));
+    }
+
+    @GetMapping("/float-transactions/{id}")
+    public ResponseEntity<ApiResponse<?>> getFloatTransactionById(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.of(
+                HttpStatus.OK.value(),
+                "Float transaction fetched successfully",
+                moneyMovementService.getFloatTransactionById(id)
+        ));
+    }
+
+    @PutMapping("/float-transactions/{id}")
+    public ResponseEntity<ApiResponse<?>> updateFloatTransaction(
+            @PathVariable Long id,
+            @Valid @RequestBody MoneyMovementDtos.UpdateBranchFloatTransactionRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.of(
+                HttpStatus.OK.value(),
+                "Float transaction updated successfully",
+                moneyMovementService.updateFloatTransaction(id, request)
+        ));
+    }
+
+    @GetMapping("/bank-transactions/{id}")
+    public ResponseEntity<ApiResponse<?>> getBankTransactionById(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.of(
+                HttpStatus.OK.value(),
+                "Bank transaction fetched successfully",
+                moneyMovementService.getBankTransactionById(id)
+        ));
+    }
+
+    @PutMapping("/bank-transactions/{id}")
+    public ResponseEntity<ApiResponse<?>> updateBankTransaction(
+            @PathVariable Long id,
+            @Valid @RequestBody MoneyMovementDtos.UpdateBankTransactionRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.of(
+                HttpStatus.OK.value(),
+                "Bank transaction updated successfully",
+                moneyMovementService.updateBankTransaction(id, request)
+        ));
+    }
+
+    @GetMapping("/transfers/branch/{branchId}/currency/{currency}")
+    public ResponseEntity<ApiResponse<?>> getTransferTransactionsByBranchAndCurrency(
+            @PathVariable Long branchId,
+            @PathVariable CurrencyCode currency
+    ) {
+        return ResponseEntity.ok(ApiResponse.of(
+                HttpStatus.OK.value(),
+                "Transfer transactions fetched successfully",
+                moneyMovementService.getTransactionsByBranchAndCurrency(branchId, currency)
         ));
     }
 

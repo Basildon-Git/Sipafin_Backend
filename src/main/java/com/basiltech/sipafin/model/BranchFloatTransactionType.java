@@ -9,6 +9,9 @@ public enum BranchFloatTransactionType {
     BRANCH_TRANSFER_IN,
     BRANCH_TRANSFER_OUT,
 
+    TRANSFER_IN,
+    TRANSFER_OUT,
+
     LOAN_RECEIVED,
     LOAN_REPAYMENT,
 

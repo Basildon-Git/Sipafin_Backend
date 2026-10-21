@@ -249,6 +249,20 @@ public class MoneyMovementServiceImp implements MoneyMovementService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public MoneyMovementDtos.BranchCurrencyTransactionsResponse getTransactionsByBranchAndCurrency(
+            Long branchId,
+            CurrencyCode currency
+    ) {
+        return new MoneyMovementDtos.BranchCurrencyTransactionsResponse(
+                branchId,
+                currency,
+                getFloatTransactionsByBranchAndCurrency(branchId, currency),
+                getBankTransactionsByBranchAndCurrency(branchId, currency)
+        );
+    }
+
+    @Override
     @Transactional
     public MoneyMovementDtos.BranchFloatTransactionResponse adjustFloat(
             MoneyMovementDtos.FloatAdjustmentRequest request
@@ -403,6 +417,145 @@ public class MoneyMovementServiceImp implements MoneyMovementService {
         );
 
         return moneyMovementMapper.toFloatResponse(transaction);
+    }
+
+    @Override
+    @Transactional
+    public MoneyMovementDtos.AccountTransferResponse transferBetweenAccounts(
+            MoneyMovementDtos.AccountTransferRequest request
+    ) {
+        validateTransferRequest(request);
+
+        String groupId = generateGroupId();
+
+        BranchFloatTransaction sourceFloatTransaction = null;
+        BankTransaction sourceBankTransaction = null;
+        BranchFloatTransaction destinationFloatTransaction = null;
+        BankTransaction destinationBankTransaction = null;
+
+        Branch sourceBranch;
+
+        if (request.fromType() == MoneySourceType.BRANCH_FLOAT) {
+            BranchFloatAccount sourceFloat = findActiveFloatAccount(request.fromBranchId(), request.currency());
+            ensureEnoughFloatBalance(sourceFloat, request.amount());
+            sourceBranch = sourceFloat.getBranch();
+
+            sourceFloatTransaction = postFloatTransaction(
+                    sourceFloat,
+                    BranchFloatTransactionType.TRANSFER_OUT,
+                    MoneyDirection.OUT,
+                    request.amount(),
+                    request.transactionDate(),
+                    groupId,
+                    request.reference(),
+                    request.description(),
+                    request.actionedBy()
+            );
+        } else {
+            BankAccount sourceBankAccount = findActiveBankAccount(request.fromBankAccountId(), request.currency());
+            ensureEnoughBankBalance(sourceBankAccount, request.amount());
+            sourceBranch = resolveTransferBranch(request);
+
+            sourceBankTransaction = postBankTransaction(
+                    sourceBankAccount,
+                    sourceBranch,
+                    BankLedgerTransactionType.TRANSFER_OUT,
+                    MoneyDirection.OUT,
+                    request.amount(),
+                    request.transactionDate(),
+                    groupId,
+                    request.reference(),
+                    request.description(),
+                    request.actionedBy()
+            );
+        }
+
+        if (request.toType() == MoneySourceType.BRANCH_FLOAT) {
+            BranchFloatAccount destinationFloat = findActiveFloatAccount(request.toBranchId(), request.currency());
+
+            destinationFloatTransaction = postFloatTransaction(
+                    destinationFloat,
+                    BranchFloatTransactionType.TRANSFER_IN,
+                    MoneyDirection.IN,
+                    request.amount(),
+                    request.transactionDate(),
+                    groupId,
+                    request.reference(),
+                    request.description(),
+                    request.actionedBy()
+            );
+        } else {
+            BankAccount destinationBankAccount = findActiveBankAccount(request.toBankAccountId(), request.currency());
+
+            destinationBankTransaction = postBankTransaction(
+                    destinationBankAccount,
+                    sourceBranch,
+                    BankLedgerTransactionType.TRANSFER_IN,
+                    MoneyDirection.IN,
+                    request.amount(),
+                    request.transactionDate(),
+                    groupId,
+                    request.reference(),
+                    request.description(),
+                    request.actionedBy()
+            );
+        }
+
+        return new MoneyMovementDtos.AccountTransferResponse(
+                groupId,
+                sourceFloatTransaction == null ? null : moneyMovementMapper.toFloatResponse(sourceFloatTransaction),
+                sourceBankTransaction == null ? null : moneyMovementMapper.toBankResponse(sourceBankTransaction),
+                destinationFloatTransaction == null ? null : moneyMovementMapper.toFloatResponse(destinationFloatTransaction),
+                destinationBankTransaction == null ? null : moneyMovementMapper.toBankResponse(destinationBankTransaction)
+        );
+    }
+
+    private void validateTransferRequest(MoneyMovementDtos.AccountTransferRequest request) {
+        if (request.fromType() == request.toType()
+                && request.fromType() == MoneySourceType.BRANCH_FLOAT
+                && request.fromBranchId() != null
+                && request.fromBranchId().equals(request.toBranchId())) {
+            throw new IllegalArgumentException("Cannot transfer between the same branch float account");
+        }
+
+        if (request.fromType() == request.toType()
+                && request.fromType() == MoneySourceType.BANK_ACCOUNT
+                && request.fromBankAccountId() != null
+                && request.fromBankAccountId().equals(request.toBankAccountId())) {
+            throw new IllegalArgumentException("Cannot transfer between the same bank account");
+        }
+
+        if (request.fromType() == MoneySourceType.BRANCH_FLOAT && request.fromBranchId() == null) {
+            throw new IllegalArgumentException("Source branch ID is required when source type is BRANCH_FLOAT");
+        }
+
+        if (request.fromType() == MoneySourceType.BANK_ACCOUNT && request.fromBankAccountId() == null) {
+            throw new IllegalArgumentException("Source bank account ID is required when source type is BANK_ACCOUNT");
+        }
+
+        if (request.toType() == MoneySourceType.BRANCH_FLOAT && request.toBranchId() == null) {
+            throw new IllegalArgumentException("Destination branch ID is required when destination type is BRANCH_FLOAT");
+        }
+
+        if (request.toType() == MoneySourceType.BANK_ACCOUNT && request.toBankAccountId() == null) {
+            throw new IllegalArgumentException("Destination bank account ID is required when destination type is BANK_ACCOUNT");
+        }
+    }
+
+    private Branch resolveTransferBranch(MoneyMovementDtos.AccountTransferRequest request) {
+        if (request.toType() == MoneySourceType.BRANCH_FLOAT) {
+            return findActiveBranch(request.toBranchId());
+        }
+
+        if (request.fromBranchId() != null) {
+            return findActiveBranch(request.fromBranchId());
+        }
+
+        if (request.toBranchId() != null) {
+            return findActiveBranch(request.toBranchId());
+        }
+
+        throw new IllegalArgumentException("Branch ID is required for bank-to-bank transfers");
     }
 
     @Override
@@ -773,6 +926,150 @@ public class MoneyMovementServiceImp implements MoneyMovementService {
         }
 
         return branch;
+    }
+
+//    @Override
+//    @Transactional(readOnly = true)
+//    public List<MoneyMovementDtos.BankTransactionResponse> getBankTransactionsByAccountAndCurrency(
+//            Long bankAccountId,
+//            CurrencyCode currency
+//    ) {
+//        return bankTransactionRepository.findByBankAccountIdAndCurrency(bankAccountId, currency)
+//                .stream()
+//                .sorted(Comparator.comparing(BankTransaction::getId).reversed())
+//                .map(moneyMovementMapper::toBankResponse)
+//                .toList();
+//    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MoneyMovementDtos.BranchFloatTransactionResponse getFloatTransactionById(Long id) {
+        return moneyMovementMapper.toFloatResponse(findFloatTransaction(id));
+    }
+
+    @Override
+    @Transactional
+    public MoneyMovementDtos.BranchFloatTransactionResponse updateFloatTransaction(
+            Long id,
+            MoneyMovementDtos.UpdateBranchFloatTransactionRequest request
+    ) {
+        BranchFloatTransaction transaction = findFloatTransaction(id);
+        BranchFloatAccount floatAccount = transaction.getBranchFloatAccount();
+
+        BigDecimal currentBalance = floatAccount.getCurrentBalance();
+        BigDecimal balanceWithoutOldTransaction = reverseTransactionEffect(
+                currentBalance,
+                transaction.getDirection(),
+                transaction.getAmount()
+        );
+
+        BigDecimal newBalance = applyTransactionEffect(
+                balanceWithoutOldTransaction,
+                request.direction(),
+                request.amount()
+        );
+
+        if (newBalance.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Updating this transaction would make branch float balance negative");
+        }
+
+        floatAccount.setCurrentBalance(newBalance);
+        floatAccount.setActionedBy(request.actionedBy());
+        branchFloatAccountRepository.save(floatAccount);
+
+        transaction.setDirection(request.direction());
+        transaction.setAmount(request.amount());
+        transaction.setBalanceAfter(newBalance);
+        transaction.setTransactionDate(request.transactionDate());
+        transaction.setStatus(request.status());
+        transaction.setReference(request.reference());
+        transaction.setDescription(request.description());
+        transaction.setActionedBy(request.actionedBy());
+
+        return moneyMovementMapper.toFloatResponse(branchFloatTransactionRepository.save(transaction));
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public MoneyMovementDtos.BankTransactionResponse getBankTransactionById(Long id) {
+        return moneyMovementMapper.toBankResponse(findBankTransaction(id));
+    }
+
+    @Override
+    @Transactional
+    public MoneyMovementDtos.BankTransactionResponse updateBankTransaction(
+            Long id,
+            MoneyMovementDtos.UpdateBankTransactionRequest request
+    ) {
+        BankTransaction transaction = findBankTransaction(id);
+        BankAccount bankAccount = transaction.getBankAccount();
+
+        BigDecimal currentBalance = bankAccount.getCurrentBalance();
+        BigDecimal balanceWithoutOldTransaction = reverseTransactionEffect(
+                currentBalance,
+                transaction.getDirection(),
+                transaction.getAmount()
+        );
+
+        BigDecimal newBalance = applyTransactionEffect(
+                balanceWithoutOldTransaction,
+                request.direction(),
+                request.amount()
+        );
+
+        if (newBalance.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Updating this transaction would make bank account balance negative");
+        }
+
+        bankAccount.setCurrentBalance(newBalance);
+        bankAccount.setActionedBy(request.actionedBy());
+        bankAccountRepository.save(bankAccount);
+
+        transaction.setDirection(request.direction());
+        transaction.setAmount(request.amount());
+        transaction.setBalanceAfter(newBalance);
+        transaction.setTransactionDate(request.transactionDate());
+        transaction.setStatus(request.status());
+        transaction.setReference(request.reference());
+        transaction.setDescription(request.description());
+        transaction.setActionedBy(request.actionedBy());
+
+        return moneyMovementMapper.toBankResponse(bankTransactionRepository.save(transaction));
+    }
+
+    private BigDecimal reverseTransactionEffect(
+            BigDecimal currentBalance,
+            MoneyDirection oldDirection,
+            BigDecimal oldAmount
+    ) {
+        if (oldDirection == MoneyDirection.IN) {
+            return currentBalance.subtract(oldAmount);
+        }
+
+        return currentBalance.add(oldAmount);
+    }
+
+    private BigDecimal applyTransactionEffect(
+            BigDecimal balanceBefore,
+            MoneyDirection newDirection,
+            BigDecimal newAmount
+    ) {
+        if (newDirection == MoneyDirection.IN) {
+            return balanceBefore.add(newAmount);
+        }
+
+        return balanceBefore.subtract(newAmount);
+    }
+
+    private BranchFloatTransaction findFloatTransaction(Long id) {
+        return branchFloatTransactionRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Branch float transaction not found"));
+    }
+
+    private BankTransaction findBankTransaction(Long id) {
+        return bankTransactionRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Bank transaction not found"));
     }
 
     private void ensureEnoughFloatBalance(BranchFloatAccount floatAccount, BigDecimal amount) {

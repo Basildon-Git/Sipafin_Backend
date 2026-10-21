@@ -36,6 +36,10 @@ public interface MoneyMovementService {
             MoneyMovementDtos.CurrencyExchangeRequest request
     );
 
+    MoneyMovementDtos.AccountTransferResponse transferBetweenAccounts(
+            MoneyMovementDtos.AccountTransferRequest request
+    );
+
     MoneyMovementDtos.BranchFloatTransactionResponse payExpenseFromFloat(
             MoneyMovementDtos.ExpensePaymentRequest request
     );
@@ -58,6 +62,11 @@ public interface MoneyMovementService {
             Long branchId,
             CurrencyCode currency,
             LocalDate transactionDate
+    );
+
+    MoneyMovementDtos.BranchCurrencyTransactionsResponse getTransactionsByBranchAndCurrency(
+            Long branchId,
+            CurrencyCode currency
     );
 
     List<MoneyMovementDtos.BranchFloatTransactionResponse> getLoanReceivedFloatMovements(
@@ -89,6 +98,20 @@ public interface MoneyMovementService {
 
     MoneyMovementDtos.RevenueResponse receiveRevenue(
             MoneyMovementDtos.RevenueReceiptRequest request
+    );
+
+    MoneyMovementDtos.BranchFloatTransactionResponse getFloatTransactionById(Long id);
+
+    MoneyMovementDtos.BranchFloatTransactionResponse updateFloatTransaction(
+            Long id,
+            MoneyMovementDtos.UpdateBranchFloatTransactionRequest request
+    );
+
+    MoneyMovementDtos.BankTransactionResponse getBankTransactionById(Long id);
+
+    MoneyMovementDtos.BankTransactionResponse updateBankTransaction(
+            Long id,
+            MoneyMovementDtos.UpdateBankTransactionRequest request
     );
 
 }

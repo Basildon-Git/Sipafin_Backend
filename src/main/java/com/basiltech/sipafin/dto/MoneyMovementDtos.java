@@ -222,6 +222,43 @@ public class MoneyMovementDtos {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    public record AccountTransferRequest(
+            @NotNull(message = "Source type is required")
+            MoneySourceType fromType,
+
+            Long fromBranchId,
+
+            Long fromBankAccountId,
+
+            @NotNull(message = "Destination type is required")
+            MoneySourceType toType,
+
+            Long toBranchId,
+
+            Long toBankAccountId,
+
+            @NotNull(message = "Currency is required")
+            CurrencyCode currency,
+
+            @NotNull(message = "Amount is required")
+            @DecimalMin(value = "0.01", message = "Amount must be greater than zero")
+            BigDecimal amount,
+
+            @NotNull(message = "Transaction date is required")
+            LocalDate transactionDate,
+
+            @Size(max = 100)
+            String reference,
+
+            @Size(max = 255)
+            String description,
+
+            @NotBlank(message = "Actioned by is required")
+            String actionedBy
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record CurrencyExchangeRequest(
             @NotNull(message = "Branch ID is required")
             Long branchId,
@@ -284,6 +321,58 @@ public class MoneyMovementDtos {
 
             @NotNull(message = "Revenue category is required")
             RevenueCategory category,
+
+            @Size(max = 100)
+            String reference,
+
+            @Size(max = 255)
+            String description,
+
+            @NotBlank(message = "Actioned by is required")
+            String actionedBy
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record UpdateBranchFloatTransactionRequest(
+            @NotNull(message = "Direction is required")
+            MoneyDirection direction,
+
+            @NotNull(message = "Amount is required")
+            @DecimalMin(value = "0.01", message = "Amount must be greater than zero")
+            BigDecimal amount,
+
+            @NotNull(message = "Transaction date is required")
+            LocalDate transactionDate,
+
+            @NotNull(message = "Status is required")
+            TransactionStatus status,
+
+            @Size(max = 100)
+            String reference,
+
+            @Size(max = 255)
+            String description,
+
+            @NotBlank(message = "Actioned by is required")
+            String actionedBy
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record UpdateBankTransactionRequest(
+            @NotNull(message = "Direction is required")
+            MoneyDirection direction,
+
+            @NotNull(message = "Amount is required")
+            @DecimalMin(value = "0.01", message = "Amount must be greater than zero")
+            BigDecimal amount,
+
+            @NotNull(message = "Transaction date is required")
+            LocalDate transactionDate,
+
+            @NotNull(message = "Status is required")
+            TransactionStatus status,
 
             @Size(max = 100)
             String reference,
@@ -368,6 +457,15 @@ public class MoneyMovementDtos {
     ) {
     }
 
+    public record AccountTransferResponse(
+            String transactionGroupId,
+            BranchFloatTransactionResponse sourceFloatTransaction,
+            BankTransactionResponse sourceBankTransaction,
+            BranchFloatTransactionResponse destinationFloatTransaction,
+            BankTransactionResponse destinationBankTransaction
+    ) {
+    }
+
     public record RevenueResponse(
             Long id,
             Long branchId,
@@ -387,6 +485,14 @@ public class MoneyMovementDtos {
             String actionedBy,
             Instant createdAt,
             Instant updatedAt
+    ) {
+    }
+
+    public record BranchCurrencyTransactionsResponse(
+            Long branchId,
+            CurrencyCode currency,
+            java.util.List<BranchFloatTransactionResponse> floatTransactions,
+            java.util.List<BankTransactionResponse> bankTransactions
     ) {
     }
 }

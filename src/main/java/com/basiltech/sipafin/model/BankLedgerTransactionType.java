@@ -4,6 +4,9 @@ public enum BankLedgerTransactionType {
     CASH_DEPOSIT,
     CASH_WITHDRAWAL,
 
+    TRANSFER_IN,
+    TRANSFER_OUT,
+
     COMMISSION_CREDIT,
     EXPENSE_PAYMENT,
 
