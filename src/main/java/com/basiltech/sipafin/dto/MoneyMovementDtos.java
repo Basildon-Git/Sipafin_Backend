@@ -270,9 +270,15 @@ public class MoneyMovementDtos {
             @DecimalMin(value = "0.01", message = "Received amount must be greater than zero")
             BigDecimal receivedAmount,
 
+            @NotNull(message = "Received destination is required")
+            MoneySourceType receivedTo,
+
+            Long receivedBankAccountId,
+
             @NotNull(message = "Paid currency is required")
             CurrencyCode paidCurrency,
 
+            @NotNull(message = "Paid amount is required")
             @DecimalMin(value = "0.01", message = "Paid amount must be greater than zero")
             BigDecimal paidAmount,
 
@@ -452,6 +458,7 @@ public class MoneyMovementDtos {
     public record CurrencyExchangeResponse(
             String transactionGroupId,
             BranchFloatTransactionResponse receivedFloatTransaction,
+            BankTransactionResponse receivedBankTransaction,
             BranchFloatTransactionResponse paidFloatTransaction,
             BankTransactionResponse paidBankTransaction
     ) {

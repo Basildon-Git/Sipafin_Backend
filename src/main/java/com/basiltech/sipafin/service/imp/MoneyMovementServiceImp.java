@@ -325,37 +325,68 @@ public class MoneyMovementServiceImp implements MoneyMovementService {
             throw new IllegalArgumentException("Received currency and paid currency cannot be the same");
         }
 
-        BigDecimal paidAmount = request.paidAmount() == null
-                ? request.receivedAmount().divide(request.exchangeRate(), 2, java.math.RoundingMode.HALF_UP)
-                : request.paidAmount();
-
-        BranchFloatAccount receivedFloat = findActiveFloatAccount(request.branchId(), request.receivedCurrency());
         String groupId = generateGroupId();
+        Branch branch = findActiveBranch(request.branchId());
 
-        BranchFloatTransaction receivedTransaction = postFloatTransaction(
-                receivedFloat,
-                BranchFloatTransactionType.CURRENCY_EXCHANGE_IN,
-                MoneyDirection.IN,
-                request.receivedAmount(),
-                request.transactionDate(),
-                groupId,
-                request.reference(),
-                request.description(),
-                request.actionedBy()
-        );
-
+        BranchFloatTransaction receivedFloatTransaction = null;
+        BankTransaction receivedBankTransaction = null;
         BranchFloatTransaction paidFloatTransaction = null;
         BankTransaction paidBankTransaction = null;
 
+        if (request.receivedTo() == MoneySourceType.BRANCH_FLOAT) {
+            BranchFloatAccount receivedFloat = findActiveFloatAccount(
+                    request.branchId(),
+                    request.receivedCurrency()
+            );
+
+            receivedFloatTransaction = postFloatTransaction(
+                    receivedFloat,
+                    BranchFloatTransactionType.CURRENCY_EXCHANGE_IN,
+                    MoneyDirection.IN,
+                    request.receivedAmount(),
+                    request.transactionDate(),
+                    groupId,
+                    request.reference(),
+                    request.description(),
+                    request.actionedBy()
+            );
+        } else {
+            if (request.receivedBankAccountId() == null) {
+                throw new IllegalArgumentException("Received bank account ID is required when receiving to bank account");
+            }
+
+            BankAccount receivedBankAccount = findActiveBankAccount(
+                    request.receivedBankAccountId(),
+                    request.receivedCurrency()
+            );
+
+            receivedBankTransaction = postBankTransaction(
+                    receivedBankAccount,
+                    branch,
+                    BankLedgerTransactionType.CURRENCY_EXCHANGE_IN,
+                    MoneyDirection.IN,
+                    request.receivedAmount(),
+                    request.transactionDate(),
+                    groupId,
+                    request.reference(),
+                    request.description(),
+                    request.actionedBy()
+            );
+        }
+
         if (request.paidFrom() == MoneySourceType.BRANCH_FLOAT) {
-            BranchFloatAccount paidFloat = findActiveFloatAccount(request.branchId(), request.paidCurrency());
-            ensureEnoughFloatBalance(paidFloat, paidAmount);
+            BranchFloatAccount paidFloat = findActiveFloatAccount(
+                    request.branchId(),
+                    request.paidCurrency()
+            );
+
+            ensureEnoughFloatBalance(paidFloat, request.paidAmount());
 
             paidFloatTransaction = postFloatTransaction(
                     paidFloat,
                     BranchFloatTransactionType.CURRENCY_EXCHANGE_OUT,
                     MoneyDirection.OUT,
-                    paidAmount,
+                    request.paidAmount(),
                     request.transactionDate(),
                     groupId,
                     request.reference(),
@@ -367,15 +398,19 @@ public class MoneyMovementServiceImp implements MoneyMovementService {
                 throw new IllegalArgumentException("Paid bank account ID is required when paying from bank account");
             }
 
-            BankAccount paidBankAccount = findActiveBankAccount(request.paidBankAccountId(), request.paidCurrency());
-            ensureEnoughBankBalance(paidBankAccount, paidAmount);
+            BankAccount paidBankAccount = findActiveBankAccount(
+                    request.paidBankAccountId(),
+                    request.paidCurrency()
+            );
+
+            ensureEnoughBankBalance(paidBankAccount, request.paidAmount());
 
             paidBankTransaction = postBankTransaction(
                     paidBankAccount,
-                    receivedFloat.getBranch(),
+                    branch,
                     BankLedgerTransactionType.CURRENCY_EXCHANGE_OUT,
                     MoneyDirection.OUT,
-                    paidAmount,
+                    request.paidAmount(),
                     request.transactionDate(),
                     groupId,
                     request.reference(),
@@ -386,7 +421,8 @@ public class MoneyMovementServiceImp implements MoneyMovementService {
 
         return new MoneyMovementDtos.CurrencyExchangeResponse(
                 groupId,
-                moneyMovementMapper.toFloatResponse(receivedTransaction),
+                receivedFloatTransaction == null ? null : moneyMovementMapper.toFloatResponse(receivedFloatTransaction),
+                receivedBankTransaction == null ? null : moneyMovementMapper.toBankResponse(receivedBankTransaction),
                 paidFloatTransaction == null ? null : moneyMovementMapper.toFloatResponse(paidFloatTransaction),
                 paidBankTransaction == null ? null : moneyMovementMapper.toBankResponse(paidBankTransaction)
         );
