@@ -326,7 +326,7 @@ public class MoneyMovementServiceImp implements MoneyMovementService {
         }
 
         BigDecimal paidAmount = request.paidAmount() == null
-                ? request.receivedAmount().multiply(request.exchangeRate())
+                ? request.receivedAmount().divide(request.exchangeRate(), 2, java.math.RoundingMode.HALF_UP)
                 : request.paidAmount();
 
         BranchFloatAccount receivedFloat = findActiveFloatAccount(request.branchId(), request.receivedCurrency());
