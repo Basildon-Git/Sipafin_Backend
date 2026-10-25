@@ -345,7 +345,6 @@ public class MoneyMovementDtos {
             MoneyDirection direction,
 
             @NotNull(message = "Amount is required")
-            @DecimalMin(value = "0.01", message = "Amount must be greater than zero")
             BigDecimal amount,
 
             @NotNull(message = "Transaction date is required")
@@ -371,7 +370,6 @@ public class MoneyMovementDtos {
             MoneyDirection direction,
 
             @NotNull(message = "Amount is required")
-            @DecimalMin(value = "0.01", message = "Amount must be greater than zero")
             BigDecimal amount,
 
             @NotNull(message = "Transaction date is required")
