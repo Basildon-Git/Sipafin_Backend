@@ -345,6 +345,7 @@ public class MoneyMovementDtos {
             MoneyDirection direction,
 
             @NotNull(message = "Amount is required")
+            @DecimalMin(value = "0.00", message = "Amount cannot be negative")
             BigDecimal amount,
 
             @NotNull(message = "Transaction date is required")
@@ -370,6 +371,7 @@ public class MoneyMovementDtos {
             MoneyDirection direction,
 
             @NotNull(message = "Amount is required")
+            @DecimalMin(value = "0.00", message = "Amount cannot be negative")
             BigDecimal amount,
 
             @NotNull(message = "Transaction date is required")
