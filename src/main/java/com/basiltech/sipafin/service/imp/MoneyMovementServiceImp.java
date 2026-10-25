@@ -993,17 +993,21 @@ public class MoneyMovementServiceImp implements MoneyMovementService {
         BranchFloatAccount floatAccount = transaction.getBranchFloatAccount();
 
         BigDecimal currentBalance = floatAccount.getCurrentBalance();
-        BigDecimal balanceWithoutOldTransaction = reverseTransactionEffect(
+        BigDecimal balanceWithoutOldTransaction = affectsBalance(transaction.getStatus())
+                ? reverseTransactionEffect(
                 currentBalance,
                 transaction.getDirection(),
                 transaction.getAmount()
-        );
+        )
+                : currentBalance;
 
-        BigDecimal newBalance = applyTransactionEffect(
+        BigDecimal newBalance = affectsBalance(request.status())
+                ? applyTransactionEffect(
                 balanceWithoutOldTransaction,
                 request.direction(),
                 request.amount()
-        );
+        )
+                : balanceWithoutOldTransaction;
 
         if (newBalance.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Updating this transaction would make branch float balance negative");
@@ -1042,17 +1046,21 @@ public class MoneyMovementServiceImp implements MoneyMovementService {
         BankAccount bankAccount = transaction.getBankAccount();
 
         BigDecimal currentBalance = bankAccount.getCurrentBalance();
-        BigDecimal balanceWithoutOldTransaction = reverseTransactionEffect(
+        BigDecimal balanceWithoutOldTransaction = affectsBalance(transaction.getStatus())
+                ? reverseTransactionEffect(
                 currentBalance,
                 transaction.getDirection(),
                 transaction.getAmount()
-        );
+        )
+                : currentBalance;
 
-        BigDecimal newBalance = applyTransactionEffect(
+        BigDecimal newBalance = affectsBalance(request.status())
+                ? applyTransactionEffect(
                 balanceWithoutOldTransaction,
                 request.direction(),
                 request.amount()
-        );
+        )
+                : balanceWithoutOldTransaction;
 
         if (newBalance.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Updating this transaction would make bank account balance negative");
@@ -1072,6 +1080,10 @@ public class MoneyMovementServiceImp implements MoneyMovementService {
         transaction.setActionedBy(request.actionedBy());
 
         return moneyMovementMapper.toBankResponse(bankTransactionRepository.save(transaction));
+    }
+
+    private boolean affectsBalance(TransactionStatus status) {
+        return status == TransactionStatus.POSTED;
     }
 
     private BigDecimal reverseTransactionEffect(
