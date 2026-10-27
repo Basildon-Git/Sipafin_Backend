@@ -263,6 +263,25 @@ public class MoneyMovementServiceImp implements MoneyMovementService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<MoneyMovementDtos.BranchFloatTransactionResponse> getClientLoanRepaymentFloatMovements(
+            Long branchId,
+            CurrencyCode currency
+    ) {
+        return branchFloatTransactionRepository
+                .findByBranchIdAndCurrencyAndTransactionType(
+                        branchId,
+                        currency,
+                        BranchFloatTransactionType.CLIENT_LOAN_REPAYMENT
+                )
+                .stream()
+                .filter(transaction -> transaction.getStatus() == TransactionStatus.POSTED)
+                .sorted(Comparator.comparing(BranchFloatTransaction::getId).reversed())
+                .map(moneyMovementMapper::toFloatResponse)
+                .toList();
+    }
+
+    @Override
     @Transactional
     public MoneyMovementDtos.BranchFloatTransactionResponse adjustFloat(
             MoneyMovementDtos.FloatAdjustmentRequest request

@@ -282,6 +282,19 @@ public class MoneyMovementController {
         ));
     }
 
+    @GetMapping("/float/client-loan-repayments/branch/{branchId}/currency/{currency}")
+    public ResponseEntity<ApiResponse<?>> getClientLoanRepaymentFloatMovements(
+            @PathVariable Long branchId,
+            @PathVariable CurrencyCode currency
+    ) {
+        return ResponseEntity.ok(ApiResponse.of(
+                HttpStatus.OK.value(),
+                "Client loan repayment float movements fetched successfully",
+                moneyMovementService.getClientLoanRepaymentFloatMovements(branchId, currency)
+        ));
+    }
+
+
     @GetMapping("/transfers/branch/{branchId}/currency/{currency}")
     public ResponseEntity<ApiResponse<?>> getTransferTransactionsByBranchAndCurrency(
             @PathVariable Long branchId,

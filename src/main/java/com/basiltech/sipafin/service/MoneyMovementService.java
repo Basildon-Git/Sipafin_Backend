@@ -69,6 +69,11 @@ public interface MoneyMovementService {
             CurrencyCode currency
     );
 
+    List<MoneyMovementDtos.BranchFloatTransactionResponse> getClientLoanRepaymentFloatMovements(
+            Long branchId,
+            CurrencyCode currency
+    );
+
     List<MoneyMovementDtos.BranchFloatTransactionResponse> getLoanReceivedFloatMovements(
             Long branchId,
             CurrencyCode currency
