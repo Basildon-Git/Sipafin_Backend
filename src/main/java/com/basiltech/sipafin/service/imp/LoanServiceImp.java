@@ -111,13 +111,13 @@ public class LoanServiceImp implements LoanService {
             throw new IllegalArgumentException("Loan is not active for repayment");
         }
 
-        if (request.amount().compareTo(loanAccount.getOutstandingBalance()) > 0) {
-            throw new IllegalArgumentException("Repayment amount cannot exceed outstanding balance");
-        }
-
-        if (floatAccount.getCurrentBalance().compareTo(request.amount()) < 0) {
-            throw new IllegalArgumentException("Insufficient branch float balance");
-        }
+//        if (request.amount().compareTo(loanAccount.getOutstandingBalance()) > 0) {
+//            throw new IllegalArgumentException("Repayment amount cannot exceed outstanding balance");
+//        }
+//
+//        if (floatAccount.getCurrentBalance().compareTo(request.amount()) < 0) {
+//            throw new IllegalArgumentException("Insufficient branch float balance");
+//        }
 
         BigDecimal newOutstanding = loanAccount.getOutstandingBalance().subtract(request.amount());
         loanAccount.setOutstandingBalance(newOutstanding);
