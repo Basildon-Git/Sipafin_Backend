@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -31,7 +32,7 @@ public class LoanServiceImp implements LoanService {
     public LoanDtos.LoanAccountResponse receiveLoan(LoanDtos.ReceiveLoanRequest request) {
         Investor investor = findActiveInvestor(request.investorId());
         Branch branch = findActiveBranch(request.branchId());
-        String transactionGroupId = "TXN-" + java.util.UUID.randomUUID();
+        String transactionGroupId = "TXN-" + UUID.randomUUID();
 
         LoanAccount loanAccount = new LoanAccount();
         loanAccount.setInvestor(investor);
@@ -101,29 +102,29 @@ public class LoanServiceImp implements LoanService {
     @Transactional
     public LoanDtos.LoanAccountResponse repayLoan(Long loanAccountId, LoanDtos.RepayLoanRequest request) {
         LoanAccount loanAccount = findLoan(loanAccountId);
+
+        Long repaymentBranchId = request.branchId() == null
+                ? loanAccount.getBranch().getId()
+                : request.branchId();
+
+        Branch repaymentBranch = findActiveBranch(repaymentBranchId);
+
         BranchFloatAccount floatAccount = findActiveFloatAccount(
-                loanAccount.getBranch().getId(),
+                repaymentBranch.getId(),
                 loanAccount.getCurrency()
         );
+
         String transactionGroupId = "TXN-" + java.util.UUID.randomUUID();
 
         if (loanAccount.getStatus() == LoanStatus.PAID || loanAccount.getStatus() == LoanStatus.CANCELLED) {
             throw new IllegalArgumentException("Loan is not active for repayment");
         }
 
-//        if (request.amount().compareTo(loanAccount.getOutstandingBalance()) > 0) {
-//            throw new IllegalArgumentException("Repayment amount cannot exceed outstanding balance");
-//        }
-//
-//        if (floatAccount.getCurrentBalance().compareTo(request.amount()) < 0) {
-//            throw new IllegalArgumentException("Insufficient branch float balance");
-//        }
-
         BigDecimal newOutstanding = loanAccount.getOutstandingBalance().subtract(request.amount());
         loanAccount.setOutstandingBalance(newOutstanding);
         loanAccount.setActionedBy(request.actionedBy());
 
-        if (newOutstanding.compareTo(BigDecimal.ZERO) == 0) {
+        if (newOutstanding.compareTo(BigDecimal.ZERO) <= 0) {
             loanAccount.setStatus(LoanStatus.PAID);
         } else {
             loanAccount.setStatus(LoanStatus.PARTIALLY_PAID);
@@ -133,7 +134,7 @@ public class LoanServiceImp implements LoanService {
 
         LoanTransaction loanTransaction = new LoanTransaction();
         loanTransaction.setLoanAccount(savedLoan);
-        loanTransaction.setBranch(savedLoan.getBranch());
+        loanTransaction.setBranch(repaymentBranch);
         loanTransaction.setCurrency(savedLoan.getCurrency());
         loanTransaction.setTransactionType(LoanTransactionType.LOAN_REPAYMENT);
         loanTransaction.setAmount(request.amount());
@@ -150,7 +151,7 @@ public class LoanServiceImp implements LoanService {
 
         BranchFloatTransaction floatTransaction = new BranchFloatTransaction();
         floatTransaction.setBranchFloatAccount(floatAccount);
-        floatTransaction.setBranch(savedLoan.getBranch());
+        floatTransaction.setBranch(repaymentBranch);
         floatTransaction.setCurrency(savedLoan.getCurrency());
         floatTransaction.setTransactionType(BranchFloatTransactionType.LOAN_REPAYMENT);
         floatTransaction.setDirection(MoneyDirection.OUT);
