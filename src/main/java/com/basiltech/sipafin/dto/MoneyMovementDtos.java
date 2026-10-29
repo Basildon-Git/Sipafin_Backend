@@ -15,6 +15,7 @@ public class MoneyMovementDtos {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record CashOpeningBalanceRequest(
+
             @NotNull(message = "Branch ID is required")
             Long branchId,
 
@@ -22,7 +23,7 @@ public class MoneyMovementDtos {
             CurrencyCode currency,
 
             @NotNull(message = "Amount is required")
-            @DecimalMin(value = "0.01", message = "Amount must be greater than zero")
+            @DecimalMin(value = "0.00", message = "Amount must be greater than zero")
             BigDecimal amount,
 
             @NotNull(message = "Transaction date is required")
