@@ -119,4 +119,21 @@ public interface MoneyMovementService {
             MoneyMovementDtos.UpdateBankTransactionRequest request
     );
 
+    List<MoneyMovementDtos.BankTransactionResponse> getBankTransactionsByCurrency(
+            CurrencyCode currency
+    );
+
+    List<MoneyMovementDtos.BankTransactionResponse> getBankTransactionsByCurrencyAndDateRange(
+            CurrencyCode currency,
+            LocalDate fromDate,
+            LocalDate toDate
+    );
+
+    List<MoneyMovementDtos.BankTransactionResponse> getBankTransactionsByBranchCurrencyAndDateRange(
+            Long branchId,
+            CurrencyCode currency,
+            LocalDate fromDate,
+            LocalDate toDate
+    );
+
 }

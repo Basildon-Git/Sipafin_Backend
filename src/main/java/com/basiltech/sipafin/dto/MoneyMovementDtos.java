@@ -375,6 +375,10 @@ public class MoneyMovementDtos {
             @DecimalMin(value = "0.00", message = "Amount cannot be negative")
             BigDecimal amount,
 
+            @NotNull(message = "Balance before is required")
+            @DecimalMin(value = "0.00", message = "Balance before cannot be negative")
+            BigDecimal balanceBefore,
+
             @NotNull(message = "Transaction date is required")
             LocalDate transactionDate,
 

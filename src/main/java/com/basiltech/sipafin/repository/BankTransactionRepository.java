@@ -28,4 +28,24 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
     List<BankTransaction> findByStatus(TransactionStatus status);
 
     List<BankTransaction> findByTransactionDateBetween(LocalDate fromDate, LocalDate toDate);
+
+    List<BankTransaction> findByCurrencyAndTransactionDateBetween(
+            CurrencyCode currency,
+            LocalDate fromDate,
+            LocalDate toDate
+    );
+
+    List<BankTransaction> findByBranchIdAndCurrencyAndTransactionDateBetween(
+            Long branchId,
+            CurrencyCode currency,
+            LocalDate fromDate,
+            LocalDate toDate
+    );
+
+    List<BankTransaction> findByBankAccountIdAndCurrencyAndTransactionDateBetween(
+            Long bankAccountId,
+            CurrencyCode currency,
+            LocalDate fromDate,
+            LocalDate toDate
+    );
 }

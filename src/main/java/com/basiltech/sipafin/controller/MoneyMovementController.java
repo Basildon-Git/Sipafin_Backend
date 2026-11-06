@@ -282,6 +282,44 @@ public class MoneyMovementController {
         ));
     }
 
+    @GetMapping("/bank/currency/{currency}")
+    public ResponseEntity<ApiResponse<?>> getBankTransactionsByCurrency(
+            @PathVariable CurrencyCode currency
+    ) {
+        return ResponseEntity.ok(ApiResponse.of(
+                HttpStatus.OK.value(),
+                "Bank transactions fetched successfully",
+                moneyMovementService.getBankTransactionsByCurrency(currency)
+        ));
+    }
+
+    @GetMapping("/bank/currency/{currency}/date-range")
+    public ResponseEntity<ApiResponse<?>> getBankTransactionsByCurrencyAndDateRange(
+            @PathVariable CurrencyCode currency,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate
+    ) {
+        return ResponseEntity.ok(ApiResponse.of(
+                HttpStatus.OK.value(),
+                "Bank transactions by date range fetched successfully",
+                moneyMovementService.getBankTransactionsByCurrencyAndDateRange(currency, fromDate, toDate)
+        ));
+    }
+
+    @GetMapping("/bank/branch/{branchId}/currency/{currency}/date-range")
+    public ResponseEntity<ApiResponse<?>> getBankTransactionsByBranchCurrencyAndDateRange(
+            @PathVariable Long branchId,
+            @PathVariable CurrencyCode currency,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate
+    ) {
+        return ResponseEntity.ok(ApiResponse.of(
+                HttpStatus.OK.value(),
+                "Bank transactions by branch and date range fetched successfully",
+                moneyMovementService.getBankTransactionsByBranchCurrencyAndDateRange(branchId, currency, fromDate, toDate)
+        ));
+    }
+
     @GetMapping("/float/client-loan-repayments/branch/{branchId}/currency/{currency}")
     public ResponseEntity<ApiResponse<?>> getClientLoanRepaymentFloatMovements(
             @PathVariable Long branchId,

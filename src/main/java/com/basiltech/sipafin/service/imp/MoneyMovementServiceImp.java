@@ -1062,45 +1062,128 @@ public class MoneyMovementServiceImp implements MoneyMovementService {
             MoneyMovementDtos.UpdateBankTransactionRequest request
     ) {
         BankTransaction transaction = findBankTransaction(id);
-        BankAccount bankAccount = transaction.getBankAccount();
-
-        BigDecimal currentBalance = bankAccount.getCurrentBalance();
-        BigDecimal balanceWithoutOldTransaction = affectsBalance(transaction.getStatus())
-                ? reverseTransactionEffect(
-                currentBalance,
-                transaction.getDirection(),
-                transaction.getAmount()
-        )
-                : currentBalance;
-
-        BigDecimal newBalance = affectsBalance(request.status())
-                ? applyTransactionEffect(
-                balanceWithoutOldTransaction,
-                request.direction(),
-                request.amount()
-        )
-                : balanceWithoutOldTransaction;
-
-        if (newBalance.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("Updating this transaction would make bank account balance negative");
-        }
-
-        bankAccount.setCurrentBalance(newBalance);
-        bankAccount.setActionedBy(request.actionedBy());
-        bankAccountRepository.save(bankAccount);
 
         transaction.setDirection(request.direction());
         transaction.setAmount(request.amount());
-        transaction.setBalanceAfter(newBalance);
         transaction.setTransactionDate(request.transactionDate());
         transaction.setStatus(request.status());
         transaction.setReference(request.reference());
         transaction.setDescription(request.description());
         transaction.setActionedBy(request.actionedBy());
 
-        return moneyMovementMapper.toBankResponse(bankTransactionRepository.save(transaction));
+        BankTransaction savedTransaction = bankTransactionRepository.save(transaction);
+
+        recalculateBankBalancesFrom(savedTransaction, request.balanceBefore());
+
+        return moneyMovementMapper.toBankResponse(findBankTransaction(savedTransaction.getId()));
     }
 
+    private BigDecimal calculateBalanceAfter(
+            BigDecimal balanceBefore,
+            MoneyDirection direction,
+            BigDecimal amount
+    ) {
+        if (direction == MoneyDirection.IN) {
+            return balanceBefore.add(amount);
+        }
+
+        return balanceBefore.subtract(amount);
+    }
+
+    private void recalculateBankBalancesFrom(BankTransaction editedTransaction, BigDecimal balanceBefore) {
+        List<BankTransaction> transactions = bankTransactionRepository
+                .findByBankAccountId(editedTransaction.getBankAccount().getId())
+                .stream()
+                .sorted(
+                        Comparator.comparing(BankTransaction::getTransactionDate)
+                                .thenComparing(BankTransaction::getId)
+                )
+                .toList();
+
+        BigDecimal runningBalance = balanceBefore;
+        BankAccount bankAccount = editedTransaction.getBankAccount();
+
+        for (BankTransaction transaction : transactions) {
+            boolean isBeforeEditedTransaction =
+                    transaction.getTransactionDate().isBefore(editedTransaction.getTransactionDate()) ||
+                            (
+                                    transaction.getTransactionDate().isEqual(editedTransaction.getTransactionDate()) &&
+                                            transaction.getId() < editedTransaction.getId()
+                            );
+
+            if (isBeforeEditedTransaction) {
+                continue;
+            }
+
+            runningBalance = calculateBalanceAfter(
+                    runningBalance,
+                    transaction.getDirection(),
+                    transaction.getAmount()
+            );
+
+            if (runningBalance.compareTo(BigDecimal.ZERO) < 0) {
+                throw new IllegalArgumentException("Recalculation would make bank account balance negative");
+            }
+
+            transaction.setBalanceAfter(runningBalance);
+            bankTransactionRepository.save(transaction);
+        }
+
+        bankAccount.setCurrentBalance(runningBalance);
+        bankAccount.setActionedBy(editedTransaction.getActionedBy());
+        bankAccountRepository.save(bankAccount);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MoneyMovementDtos.BankTransactionResponse> getBankTransactionsByCurrency(
+            CurrencyCode currency
+    ) {
+        return bankTransactionRepository.findByCurrency(currency)
+                .stream()
+                .sorted(
+                        Comparator.comparing(BankTransaction::getTransactionDate)
+                                .thenComparing(BankTransaction::getId)
+                )
+                .map(moneyMovementMapper::toBankResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MoneyMovementDtos.BankTransactionResponse> getBankTransactionsByCurrencyAndDateRange(
+            CurrencyCode currency,
+            LocalDate fromDate,
+            LocalDate toDate
+    ) {
+        return bankTransactionRepository.findByCurrencyAndTransactionDateBetween(currency, fromDate, toDate)
+                .stream()
+                .sorted(
+                        Comparator.comparing(BankTransaction::getTransactionDate)
+                                .thenComparing(BankTransaction::getId)
+                )
+                .map(moneyMovementMapper::toBankResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MoneyMovementDtos.BankTransactionResponse> getBankTransactionsByBranchCurrencyAndDateRange(
+            Long branchId,
+            CurrencyCode currency,
+            LocalDate fromDate,
+            LocalDate toDate
+    ) {
+        return bankTransactionRepository
+                .findByBranchIdAndCurrencyAndTransactionDateBetween(branchId, currency, fromDate, toDate)
+                .stream()
+                .sorted(
+                        Comparator.comparing(BankTransaction::getTransactionDate)
+                                .thenComparing(BankTransaction::getId)
+                )
+                .map(moneyMovementMapper::toBankResponse)
+                .toList();
+    }
     private boolean affectsBalance(TransactionStatus status) {
         return status == TransactionStatus.POSTED;
     }
