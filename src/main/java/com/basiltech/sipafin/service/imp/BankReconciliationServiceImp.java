@@ -37,27 +37,29 @@ public class BankReconciliationServiceImp implements BankReconciliationService {
             throw new IllegalArgumentException("Bank account currency does not match reconciliation currency");
         }
 
-        BigDecimal systemBalance = resolveSystemClosingBalance(
+        BigDecimal systemClosingBalance = resolveSystemClosingBalance(
                 bankAccount,
                 request.reconciliationDate()
         );
 
-        BigDecimal difference = request.statementBalance().subtract(systemBalance);
+        BigDecimal difference = request.statementBalance().subtract(systemClosingBalance);
         ReconciliationDifferenceType differenceType = resolveDifferenceType(difference);
+        BigDecimal reconciledAmount = BigDecimal.ZERO;
         BigDecimal unreconciledAmount = difference.abs();
+        BigDecimal systemBalanceAfterReconciliation = systemClosingBalance;
 
         BankReconciliation reconciliation = new BankReconciliation();
         reconciliation.setBankAccount(bankAccount);
         reconciliation.setBranch(branch);
         reconciliation.setCurrency(bankAccount.getCurrency());
         reconciliation.setReconciliationDate(request.reconciliationDate());
-        reconciliation.setSystemBalanceBefore(systemBalance);
+        reconciliation.setSystemBalanceBefore(systemClosingBalance);
         reconciliation.setStatementBalance(request.statementBalance());
         reconciliation.setDifference(difference);
         reconciliation.setDifferenceType(differenceType);
-        reconciliation.setReconciledAmount(BigDecimal.ZERO);
+        reconciliation.setReconciledAmount(reconciledAmount);
         reconciliation.setUnreconciledAmount(unreconciledAmount);
-        reconciliation.setSystemBalanceAfter(systemBalance);
+        reconciliation.setSystemBalanceAfter(systemBalanceAfterReconciliation);
         reconciliation.setTransactionGroupId("REC-" + UUID.randomUUID());
         reconciliation.setStatus(differenceType == ReconciliationDifferenceType.BALANCED
                 ? ReconciliationStatus.BALANCED
@@ -85,11 +87,13 @@ public class BankReconciliationServiceImp implements BankReconciliationService {
             throw new IllegalArgumentException("Reconciliation is cancelled");
         }
 
-        if (request.amount().compareTo(reconciliation.getUnreconciledAmount()) > 0) {
+        ReconciliationSnapshot snapshotBeforeItem = resolveReconciliationSnapshot(reconciliation);
+
+        if (request.amount().compareTo(snapshotBeforeItem.unreconciledAmount()) > 0) {
             throw new IllegalArgumentException("Reconciliation item amount cannot exceed unreconciled amount");
         }
 
-        validateItemEffect(reconciliation, request.effect());
+        validateItemEffect(snapshotBeforeItem.differenceType(), request.effect());
 
         BankTransaction bankTransaction = null;
 
@@ -109,18 +113,17 @@ public class BankReconciliationServiceImp implements BankReconciliationService {
         item.setActionedBy(request.actionedBy());
         bankReconciliationItemRepository.save(item);
 
-        BigDecimal reconciledAmount = reconciliation.getReconciledAmount().add(request.amount());
-        BigDecimal unreconciledAmount = reconciliation.getDifference().abs().subtract(reconciledAmount);
+        ReconciliationSnapshot snapshotAfterItem = resolveReconciliationSnapshot(reconciliation);
 
-        reconciliation.setReconciledAmount(reconciledAmount);
-        reconciliation.setUnreconciledAmount(unreconciledAmount);
-        reconciliation.setSystemBalanceAfter(resolveSystemClosingBalance(
-                reconciliation.getBankAccount(),
-                reconciliation.getReconciliationDate()
-        ));
+        reconciliation.setSystemBalanceBefore(snapshotAfterItem.systemClosingBalance());
+        reconciliation.setDifference(snapshotAfterItem.difference());
+        reconciliation.setDifferenceType(snapshotAfterItem.differenceType());
+        reconciliation.setReconciledAmount(snapshotAfterItem.reconciledAmount());
+        reconciliation.setUnreconciledAmount(snapshotAfterItem.unreconciledAmount());
+        reconciliation.setSystemBalanceAfter(snapshotAfterItem.systemBalanceAfterReconciliation());
         reconciliation.setActionedBy(request.actionedBy());
 
-        if (unreconciledAmount.compareTo(BigDecimal.ZERO) == 0) {
+        if (snapshotAfterItem.unreconciledAmount().compareTo(BigDecimal.ZERO) == 0) {
             reconciliation.setStatus(ReconciliationStatus.BALANCED);
         } else {
             reconciliation.setStatus(ReconciliationStatus.PARTIALLY_RECONCILED);
@@ -179,6 +182,10 @@ public class BankReconciliationServiceImp implements BankReconciliationService {
                 ? bankAccount.getCurrentBalance().add(request.amount())
                 : bankAccount.getCurrentBalance().subtract(request.amount());
 
+        if (balanceAfter.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Reconciliation adjustment would make bank account balance negative");
+        }
+
         bankAccount.setCurrentBalance(balanceAfter);
         bankAccount.setActionedBy(request.actionedBy());
         bankAccountRepository.save(bankAccount);
@@ -209,18 +216,21 @@ public class BankReconciliationServiceImp implements BankReconciliationService {
         return "Bank reconciliation item: " + request.category();
     }
 
-    private void validateItemEffect(BankReconciliation reconciliation, ReconciliationItemEffect effect) {
-        if (reconciliation.getDifferenceType() == ReconciliationDifferenceType.SHORT
+    private void validateItemEffect(
+            ReconciliationDifferenceType differenceType,
+            ReconciliationItemEffect effect
+    ) {
+        if (differenceType == ReconciliationDifferenceType.SHORT
                 && effect == ReconciliationItemEffect.BANK_IN) {
             throw new IllegalArgumentException("SHORT reconciliation expects BANK_OUT or NO_BALANCE_EFFECT");
         }
 
-        if (reconciliation.getDifferenceType() == ReconciliationDifferenceType.EXCESS
+        if (differenceType == ReconciliationDifferenceType.EXCESS
                 && effect == ReconciliationItemEffect.BANK_OUT) {
             throw new IllegalArgumentException("EXCESS reconciliation expects BANK_IN or NO_BALANCE_EFFECT");
         }
 
-        if (reconciliation.getDifferenceType() == ReconciliationDifferenceType.BALANCED
+        if (differenceType == ReconciliationDifferenceType.BALANCED
                 && effect != ReconciliationItemEffect.NO_BALANCE_EFFECT) {
             throw new IllegalArgumentException("Balanced reconciliation does not need bank balance movement");
         }
@@ -236,6 +246,43 @@ public class BankReconciliationServiceImp implements BankReconciliationService {
         }
 
         return ReconciliationDifferenceType.EXCESS;
+    }
+
+    private ReconciliationSnapshot resolveReconciliationSnapshot(BankReconciliation reconciliation) {
+        BigDecimal systemClosingBalance = resolveSystemClosingBalance(
+                reconciliation.getBankAccount(),
+                reconciliation.getReconciliationDate()
+        );
+
+        BigDecimal difference = reconciliation.getStatementBalance().subtract(systemClosingBalance);
+        ReconciliationDifferenceType differenceType = resolveDifferenceType(difference);
+
+        List<BankReconciliationItem> items = bankReconciliationItemRepository
+                .findByReconciliationId(reconciliation.getId());
+
+        BigDecimal reconciledAmount = items.stream()
+                .map(BankReconciliationItem::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal unreconciledAmount = difference.abs().subtract(reconciledAmount);
+
+        if (unreconciledAmount.compareTo(BigDecimal.ZERO) < 0) {
+            unreconciledAmount = BigDecimal.ZERO;
+        }
+
+        BigDecimal systemBalanceAfterReconciliation = resolveSystemBalanceAfterReconciliation(
+                systemClosingBalance,
+                items
+        );
+
+        return new ReconciliationSnapshot(
+                systemClosingBalance,
+                difference,
+                differenceType,
+                reconciledAmount,
+                unreconciledAmount,
+                systemBalanceAfterReconciliation
+        );
     }
 
     private BigDecimal resolveSystemClosingBalance(BankAccount bankAccount, LocalDate reconciliationDate) {
@@ -255,6 +302,29 @@ public class BankReconciliationServiceImp implements BankReconciliationService {
                 .map(BankTransaction::getBalanceAfter)
                 .findFirst()
                 .orElse(BigDecimal.ZERO);
+    }
+
+    private BigDecimal resolveSystemBalanceAfterReconciliation(
+            BigDecimal systemClosingBalance,
+            List<BankReconciliationItem> items
+    ) {
+        BigDecimal balance = systemClosingBalance;
+
+        List<BankReconciliationItem> sortedItems = items.stream()
+                .sorted(Comparator.comparing(BankReconciliationItem::getId))
+                .toList();
+
+        for (BankReconciliationItem item : sortedItems) {
+            if (item.getEffect() == ReconciliationItemEffect.BANK_IN) {
+                balance = balance.add(item.getAmount());
+            }
+
+            if (item.getEffect() == ReconciliationItemEffect.BANK_OUT) {
+                balance = balance.subtract(item.getAmount());
+            }
+        }
+
+        return balance;
     }
 
     private BankReconciliation findReconciliation(Long id) {
@@ -292,13 +362,7 @@ public class BankReconciliationServiceImp implements BankReconciliationService {
         BankAccount bankAccount = reconciliation.getBankAccount();
         Branch branch = reconciliation.getBranch();
 
-        BigDecimal systemClosingBalance = resolveSystemClosingBalance(
-                bankAccount,
-                reconciliation.getReconciliationDate()
-        );
-
-        BigDecimal difference = reconciliation.getStatementBalance().subtract(systemClosingBalance);
-        ReconciliationDifferenceType differenceType = resolveDifferenceType(difference);
+        ReconciliationSnapshot snapshot = resolveReconciliationSnapshot(reconciliation);
 
         List<BankReconciliationDtos.BankReconciliationItemResponse> items =
                 bankReconciliationItemRepository.findByReconciliationId(reconciliation.getId())
@@ -318,13 +382,13 @@ public class BankReconciliationServiceImp implements BankReconciliationService {
                 branch == null ? null : branch.getName(),
                 reconciliation.getCurrency(),
                 reconciliation.getReconciliationDate(),
-                systemClosingBalance,
+                snapshot.systemClosingBalance(),
                 reconciliation.getStatementBalance(),
-                difference,
-                differenceType,
-                reconciliation.getReconciledAmount(),
-                reconciliation.getUnreconciledAmount(),
-                reconciliation.getSystemBalanceAfter(),
+                snapshot.difference(),
+                snapshot.differenceType(),
+                snapshot.reconciledAmount(),
+                snapshot.unreconciledAmount(),
+                snapshot.systemBalanceAfterReconciliation(),
                 reconciliation.getTransactionGroupId(),
                 reconciliation.getStatus(),
                 reconciliation.getReference(),
@@ -368,5 +432,13 @@ public class BankReconciliationServiceImp implements BankReconciliationService {
         return branch;
     }
 
-
+    private record ReconciliationSnapshot(
+            BigDecimal systemClosingBalance,
+            BigDecimal difference,
+            ReconciliationDifferenceType differenceType,
+            BigDecimal reconciledAmount,
+            BigDecimal unreconciledAmount,
+            BigDecimal systemBalanceAfterReconciliation
+    ) {
+    }
 }
