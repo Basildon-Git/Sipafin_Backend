@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -36,7 +37,11 @@ public class BankReconciliationServiceImp implements BankReconciliationService {
             throw new IllegalArgumentException("Bank account currency does not match reconciliation currency");
         }
 
-        BigDecimal systemBalance = bankAccount.getCurrentBalance();
+        BigDecimal systemBalance = resolveSystemClosingBalance(
+                bankAccount,
+                request.reconciliationDate()
+        );
+
         BigDecimal difference = request.statementBalance().subtract(systemBalance);
         ReconciliationDifferenceType differenceType = resolveDifferenceType(difference);
         BigDecimal unreconciledAmount = difference.abs();
@@ -109,7 +114,10 @@ public class BankReconciliationServiceImp implements BankReconciliationService {
 
         reconciliation.setReconciledAmount(reconciledAmount);
         reconciliation.setUnreconciledAmount(unreconciledAmount);
-        reconciliation.setSystemBalanceAfter(reconciliation.getBankAccount().getCurrentBalance());
+        reconciliation.setSystemBalanceAfter(resolveSystemClosingBalance(
+                reconciliation.getBankAccount(),
+                reconciliation.getReconciliationDate()
+        ));
         reconciliation.setActionedBy(request.actionedBy());
 
         if (unreconciledAmount.compareTo(BigDecimal.ZERO) == 0) {
@@ -228,6 +236,25 @@ public class BankReconciliationServiceImp implements BankReconciliationService {
         }
 
         return ReconciliationDifferenceType.EXCESS;
+    }
+
+    private BigDecimal resolveSystemClosingBalance(BankAccount bankAccount, LocalDate reconciliationDate) {
+        return bankTransactionRepository
+                .findByBankAccountIdAndCurrencyAndTransactionDateLessThanEqualAndStatus(
+                        bankAccount.getId(),
+                        bankAccount.getCurrency(),
+                        reconciliationDate,
+                        TransactionStatus.POSTED
+                )
+                .stream()
+                .sorted(
+                        Comparator.comparing(BankTransaction::getTransactionDate)
+                                .thenComparing(BankTransaction::getId)
+                                .reversed()
+                )
+                .map(BankTransaction::getBalanceAfter)
+                .findFirst()
+                .orElse(BigDecimal.ZERO);
     }
 
     private BankReconciliation findReconciliation(Long id) {

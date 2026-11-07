@@ -19,6 +19,14 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
 
     List<BankTransaction> findByBankAccountIdAndCurrency(Long bankAccountId, CurrencyCode currency);
 
+
+    List<BankTransaction> findByBankAccountIdAndCurrencyAndTransactionDateLessThanEqualAndStatus(
+            Long bankAccountId,
+            CurrencyCode currency,
+            LocalDate transactionDate,
+            TransactionStatus status
+    );
+
     List<BankTransaction> findByTransactionGroupId(String transactionGroupId);
 
     List<BankTransaction> findByCurrency(CurrencyCode currency);
@@ -48,4 +56,5 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
             LocalDate fromDate,
             LocalDate toDate
     );
+
 }
