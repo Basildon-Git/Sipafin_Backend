@@ -292,6 +292,14 @@ public class BankReconciliationServiceImp implements BankReconciliationService {
         BankAccount bankAccount = reconciliation.getBankAccount();
         Branch branch = reconciliation.getBranch();
 
+        BigDecimal systemClosingBalance = resolveSystemClosingBalance(
+                bankAccount,
+                reconciliation.getReconciliationDate()
+        );
+
+        BigDecimal difference = reconciliation.getStatementBalance().subtract(systemClosingBalance);
+        ReconciliationDifferenceType differenceType = resolveDifferenceType(difference);
+
         List<BankReconciliationDtos.BankReconciliationItemResponse> items =
                 bankReconciliationItemRepository.findByReconciliationId(reconciliation.getId())
                         .stream()
@@ -310,10 +318,10 @@ public class BankReconciliationServiceImp implements BankReconciliationService {
                 branch == null ? null : branch.getName(),
                 reconciliation.getCurrency(),
                 reconciliation.getReconciliationDate(),
-                reconciliation.getSystemBalanceBefore(),
+                systemClosingBalance,
                 reconciliation.getStatementBalance(),
-                reconciliation.getDifference(),
-                reconciliation.getDifferenceType(),
+                difference,
+                differenceType,
                 reconciliation.getReconciledAmount(),
                 reconciliation.getUnreconciledAmount(),
                 reconciliation.getSystemBalanceAfter(),
